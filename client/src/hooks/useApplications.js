@@ -1,0 +1,53 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { applicationsApi } from '../api/applications.js'
+
+export const APPLICATION_KEYS = {
+  all: ['applications'],
+  list: (filters) => ['applications', 'list', filters],
+  detail: (id) => ['applications', 'detail', id],
+}
+
+export function useApplications(filters) {
+  return useQuery({
+    queryKey: APPLICATION_KEYS.list(filters),
+    queryFn: async () => {
+      const res = await applicationsApi.getAll(filters)
+      return res.data
+    },
+  })
+}
+
+export function useApplication(id) {
+  return useQuery({
+    queryKey: APPLICATION_KEYS.detail(id),
+    queryFn: async () => {
+      const res = await applicationsApi.getById(id)
+      return res.data
+    },
+    enabled: !!id,
+  })
+}
+
+export function useCreateApplication() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: applicationsApi.create,
+    onSuccess: () => qc.invalidateQueries({ queryKey: APPLICATION_KEYS.all }),
+  })
+}
+
+export function useUpdateApplicationStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status, note }) => applicationsApi.updateStatus(id, status, note),
+    onSuccess: () => qc.invalidateQueries({ queryKey: APPLICATION_KEYS.all }),
+  })
+}
+
+export function useDeleteApplication() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: applicationsApi.remove,
+    onSuccess: () => qc.invalidateQueries({ queryKey: APPLICATION_KEYS.all }),
+  })
+}
