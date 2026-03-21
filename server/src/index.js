@@ -11,6 +11,7 @@ import coverLettersRouter from './routes/coverLetters.js'
 import statusHistoryRouter from './routes/statusHistory.js'
 import aiRouter from './routes/ai.js'
 import { errorHandler, notFound } from './middleware/errorHandler.js'
+import { startKeepAlive } from './lib/keepAlive.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -53,4 +54,5 @@ process.on('uncaughtException', (err) => {
 // ─── Start ───────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`[server] ApplyIQ API running on http://localhost:${PORT}`)
+  startKeepAlive()
 })

@@ -42,8 +42,9 @@ model Job {
   source       String?
   created_at   DateTime @default(now())
 
-  applications Application[]
+  applications  Application[]
   cover_letters CoverLetter[]
+  ai_analyses   AiAnalysis[]
 
   @@map("jobs")
 }
@@ -91,6 +92,28 @@ model Application {
   status_history StatusHistory[]
 
   @@map("applications")
+}
+
+model AiAnalysis {
+  id                String   @id @default(cuid())
+  job_id            String
+  required_skills   String[]
+  technologies      String[]
+  experience_years  Int?
+  job_type          String?
+  seniority         String?
+  keywords          String[]
+  summary           String?  @db.Text
+  match_tips        String[]
+  recommended_cv_id String?
+  match_score       Int?
+  reason            String?  @db.Text
+  suggested_tweaks  String[]
+  created_at        DateTime @default(now())
+
+  job Job @relation(fields: [job_id], references: [id], onDelete: Cascade)
+
+  @@map("ai_analyses")
 }
 
 model StatusHistory {

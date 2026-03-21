@@ -145,6 +145,28 @@ router.post('/full-analysis', async (req, res, next) => {
       })
     }
 
+    // Save analysis results to DB (replace any previous result for this job)
+    console.log('[full-analysis] STEP 8: saving AiAnalysis to DB')
+    await prisma.aiAnalysis.deleteMany({ where: { job_id } })
+    const dbData = {
+      job_id,
+      required_skills:   analysis.required_skills   ?? [],
+      technologies:      analysis.technologies       ?? [],
+      experience_years:  analysis.experience_years != null ? Math.round(analysis.experience_years) : null,
+      job_type:          analysis.job_type           ?? null,
+      seniority:         analysis.seniority          ?? null,
+      keywords:          analysis.keywords           ?? [],
+      summary:           analysis.summary            ?? null,
+      match_tips:        analysis.match_tips         ?? [],
+      recommended_cv_id: recommendation.recommended_cv_id ?? null,
+      match_score:       recommendation.match_score != null ? Math.round(recommendation.match_score) : null,
+      reason:            recommendation.reason       ?? null,
+      suggested_tweaks:  recommendation.suggested_tweaks  ?? [],
+    }
+    console.log('[full-analysis] SAVING to DB, data:', JSON.stringify(dbData, null, 2))
+    const savedAnalysis = await prisma.aiAnalysis.create({ data: dbData })
+    console.log('[full-analysis] SAVED OK, id:', savedAnalysis.id)
+
     // If there's an application for this job and we have a match score, save it
     let application_updated = false
     if (recommendation.match_score != null && recommendation.match_score > 0) {
@@ -160,7 +182,7 @@ router.post('/full-analysis', async (req, res, next) => {
         application_updated = true
       }
     }
-    console.log('[full-analysis] STEP 8: application_updated =', application_updated, '— sending response')
+    console.log('[full-analysis] STEP 9: application_updated =', application_updated, '— sending response')
 
     res.json({
       data: { analysis, recommendation, application_updated },
@@ -171,6 +193,28 @@ router.post('/full-analysis', async (req, res, next) => {
     })
   } catch (err) {
     console.error('[full-analysis] OUTER CATCH:', err)
+    next(err)
+  }
+})
+
+// ─── GET /api/ai/analysis/:jobId ──────────────────────────────────────────────
+// Returns the latest saved AiAnalysis for a job, or null if none exists.
+router.get('/analysis/:jobId', async (req, res, next) => {
+  try {
+    const { jobId } = req.params
+    console.log('[get-analysis] jobId received:', jobId)
+
+    const saved = await prisma.aiAnalysis.findFirst({
+      where: { job_id: jobId },
+      orderBy: { created_at: 'desc' },
+    })
+    console.log('[get-analysis] prisma result:', saved ? `found id=${saved.id} created_at=${saved.created_at}` : 'null')
+
+    const response = { data: saved ?? null, error: null, message: saved ? 'Analysis found' : 'No analysis found' }
+    console.log('[get-analysis] returning:', response.message)
+    res.set('Cache-Control', 'no-store')
+    res.json(response)
+  } catch (err) {
     next(err)
   }
 })

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useJobs, useCreateJob, useDeleteJob } from '../hooks/useJobs.js'
 import { useCvVersions } from '../hooks/useCvVersions.js'
 import { useCreateApplication } from '../hooks/useApplications.js'
-import { useAiAnalysis } from '../hooks/useAiAnalysis.js'
+import { useAiAnalysis, getSavedAnalysis } from '../hooks/useAiAnalysis.js'
 import { useToast } from '../context/ToastContext.jsx'
 import Modal from '../components/Modal.jsx'
 
@@ -83,7 +83,7 @@ function Spinner({ className = 'w-4 h-4' }) {
 }
 
 // ─── Analysis Modal ───────────────────────────────────────────────────────────
-function AnalysisModal({ isOpen, onClose, job, result, cvVersions }) {
+function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onReanalyze, reanalyzing }) {
   const createApp = useCreateApplication()
   const toast = useToast()
   const [applying, setApplying] = useState(false)
@@ -119,6 +119,31 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`AI Analysis — ${job.company_name}`}>
       <div className="space-y-5 max-h-[68vh] overflow-y-auto pr-1 -mr-1">
+
+        {/* Saved analysis banner */}
+        {savedAt && (
+          <div className="flex items-center justify-between bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-4 py-2.5">
+            <span className="text-xs text-gray-500">
+              Last analyzed: {new Date(savedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <button
+              onClick={onReanalyze}
+              disabled={reanalyzing}
+              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {reanalyzing ? (
+                <><Spinner className="w-3 h-3 text-blue-400" />Re-analyzing…</>
+              ) : (
+                <>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  Re-analyze
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Summary */}
         {analysis?.summary && (
@@ -278,7 +303,29 @@ export default function Jobs() {
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false)
   const [analysisJob, setAnalysisJob] = useState(null)
   const [analysisResult, setAnalysisResult] = useState(null)
+  const [analysisSavedAt, setAnalysisSavedAt] = useState(null)
   const [analyzingId, setAnalyzingId] = useState(null)
+  const [reanalyzingId, setReanalyzingId] = useState(null)
+
+  // Map of jobId → saved AiAnalysis row (or null). Populated on load, updated after each AI call.
+  const [savedAnalysesMap, setSavedAnalysesMap] = useState({})
+
+  // On page load, fetch saved analyses for all jobs (cheap DB calls, no AI).
+  useEffect(() => {
+    console.log('[useEffect] jobs length:', jobs?.length)
+    if (!jobs || jobs.length === 0) return
+    jobs.forEach(async (job) => {
+      try {
+        const saved = await getSavedAnalysis(job.id)
+        console.log(`[savedAnalysesMap] job=${job.id} (${job.company_name}) → saved value:`, saved)
+        console.log(`[savedAnalysesMap] hasSaved will be:`, !!saved)
+        setSavedAnalysesMap((prev) => ({ ...prev, [job.id]: saved }))
+      } catch (err) {
+        console.warn(`[savedAnalysesMap] job=${job.id} fetch failed:`, err.message)
+        setSavedAnalysesMap((prev) => ({ ...prev, [job.id]: null }))
+      }
+    })
+  }, [jobs])
 
   function openAdd() { setForm(EMPTY_FORM); setErrors({}); setAddModalOpen(true) }
   function closeAdd() { setAddModalOpen(false) }
@@ -320,17 +367,70 @@ export default function Jobs() {
     deleteJob.mutate(job.id)
   }
 
+  // Opens modal instantly with cached data — no AI call.
+  function handleViewSaved(job) {
+    const saved = savedAnalysesMap[job.id]
+    if (!saved) return
+    setAnalysisJob(job)
+    setAnalysisSavedAt(saved.created_at)
+    setAnalysisResult({
+      analysis: {
+        required_skills:  saved.required_skills,
+        technologies:     saved.technologies,
+        experience_years: saved.experience_years,
+        job_type:         saved.job_type,
+        seniority:        saved.seniority,
+        keywords:         saved.keywords,
+        summary:          saved.summary,
+        match_tips:       saved.match_tips,
+      },
+      recommendation: {
+        recommended_cv_id: saved.recommended_cv_id,
+        match_score:       saved.match_score,
+        reason:            saved.reason,
+        suggested_tweaks:  saved.suggested_tweaks,
+      },
+    })
+    setAnalysisModalOpen(true)
+  }
+
+  // Runs a fresh AI call — used when no saved analysis exists.
   async function handleAnalyze(job) {
     setAnalyzingId(job.id)
     try {
       const data = await aiAnalysis.mutateAsync(job.id)
+      // Refetch the saved row to update the map with the freshly stored result.
+      const saved = await getSavedAnalysis(job.id)
+      console.log('[handleAnalyze] getSavedAnalysis returned:', saved)
+      console.log('[handleAnalyze] hasSaved will be:', !!saved)
+      setSavedAnalysesMap((prev) => ({ ...prev, [job.id]: saved }))
       setAnalysisJob(job)
+      setAnalysisSavedAt(saved?.created_at ?? null)
       setAnalysisResult(data)
       setAnalysisModalOpen(true)
     } catch (err) {
       toast.error(err.response?.data?.error ?? 'AI analysis failed. Check the job description.')
     } finally {
       setAnalyzingId(null)
+    }
+  }
+
+  // Forces a new AI call — used from the table row or from inside the modal.
+  async function handleReanalyze(job) {
+    const targetJob = job ?? analysisJob
+    if (!targetJob) return
+    setReanalyzingId(targetJob.id)
+    try {
+      const data = await aiAnalysis.mutateAsync(targetJob.id)
+      const saved = await getSavedAnalysis(targetJob.id)
+      console.log('[handleReanalyze] getSavedAnalysis returned:', saved)
+      setSavedAnalysesMap((prev) => ({ ...prev, [targetJob.id]: saved }))
+      setAnalysisSavedAt(saved?.created_at ?? null)
+      setAnalysisResult(data)
+    } catch (err) {
+      toast.error(err.response?.data?.error ?? 'Re-analysis failed.')
+    } finally {
+      setReanalyzingId(null)
     }
   }
 
@@ -377,44 +477,83 @@ export default function Jobs() {
               </tr>
             </thead>
             <tbody>
-              {jobs.map((job) => (
-                <tr key={job.id} className="border-b border-[#2a2a2a] last:border-0 hover:bg-[#222] transition-colors">
-                  <td className="px-6 py-3.5 font-medium text-white">{job.company_name}</td>
-                  <td className="px-6 py-3.5 text-gray-300">{job.title}</td>
-                  <td className="px-6 py-3.5 text-gray-500">
-                    {job.source
-                      ? <span className="text-xs bg-[#2a2a2a] text-gray-400 px-2 py-0.5 rounded">{job.source}</span>
-                      : '—'}
-                  </td>
-                  <td className="px-6 py-3.5 text-gray-500 text-xs">{formatDate(job.created_at)}</td>
-                  <td className="px-6 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => handleAnalyze(job)}
-                        disabled={analyzingId === job.id}
-                        className="flex items-center gap-1.5 text-gray-600 hover:text-blue-400 disabled:text-blue-400 transition-colors text-xs px-2 py-1 rounded hover:bg-blue-500/10 disabled:bg-blue-500/10 disabled:cursor-default"
-                      >
-                        {analyzingId === job.id ? (
-                          <><Spinner className="w-3.5 h-3.5 text-blue-400" />Analyzing…</>
-                        ) : (
+              {jobs.map((job) => {
+                const hasSaved = !!savedAnalysesMap[job.id]
+                const isAnalyzing = analyzingId === job.id
+                const isReanalyzing = reanalyzingId === job.id
+                return (
+                  <tr key={job.id} className="border-b border-[#2a2a2a] last:border-0 hover:bg-[#222] transition-colors">
+                    <td className="px-6 py-3.5 font-medium text-white">{job.company_name}</td>
+                    <td className="px-6 py-3.5 text-gray-300">{job.title}</td>
+                    <td className="px-6 py-3.5 text-gray-500">
+                      {job.source
+                        ? <span className="text-xs bg-[#2a2a2a] text-gray-400 px-2 py-0.5 rounded">{job.source}</span>
+                        : '—'}
+                    </td>
+                    <td className="px-6 py-3.5 text-gray-500 text-xs">{formatDate(job.created_at)}</td>
+                    <td className="px-6 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {hasSaved ? (
                           <>
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                            </svg>
-                            Analyze
+                            {/* View Analysis — opens modal with saved data, no AI call */}
+                            <button
+                              onClick={() => handleViewSaved(job)}
+                              className="flex items-center gap-1.5 text-gray-600 hover:text-blue-400 transition-colors text-xs px-2 py-1 rounded hover:bg-blue-500/10"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              View Analysis
+                            </button>
+
+                            {/* Re-analyze — forces a new AI call */}
+                            <button
+                              onClick={() => handleReanalyze(job)}
+                              disabled={isReanalyzing}
+                              title="Run a fresh AI analysis (uses API credits)"
+                              className="flex items-center justify-center text-gray-600 hover:text-yellow-400 disabled:text-yellow-400 transition-colors p-1.5 rounded hover:bg-yellow-500/10 disabled:bg-yellow-500/10 disabled:cursor-default"
+                            >
+                              {isReanalyzing ? (
+                                <Spinner className="w-3.5 h-3.5 text-yellow-400" />
+                              ) : (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                              )}
+                            </button>
                           </>
+                        ) : (
+                          // No saved analysis — show Analyze button
+                          <button
+                            onClick={() => handleAnalyze(job)}
+                            disabled={isAnalyzing}
+                            className="flex items-center gap-1.5 text-gray-600 hover:text-blue-400 disabled:text-blue-400 transition-colors text-xs px-2 py-1 rounded hover:bg-blue-500/10 disabled:bg-blue-500/10 disabled:cursor-default"
+                          >
+                            {isAnalyzing ? (
+                              <><Spinner className="w-3.5 h-3.5 text-blue-400" />Analyzing…</>
+                            ) : (
+                              <>
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                                </svg>
+                                Analyze
+                              </>
+                            )}
+                          </button>
                         )}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(job)}
-                        className="text-gray-600 hover:text-red-400 transition-colors text-xs px-2 py-1 rounded hover:bg-red-500/10"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+
+                        <button
+                          onClick={() => handleDelete(job)}
+                          className="text-gray-600 hover:text-red-400 transition-colors text-xs px-2 py-1 rounded hover:bg-red-500/10"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
@@ -519,6 +658,9 @@ export default function Jobs() {
         job={analysisJob}
         result={analysisResult}
         cvVersions={cvVersions}
+        savedAt={analysisSavedAt}
+        onReanalyze={() => handleReanalyze(analysisJob)}
+        reanalyzing={reanalyzingId === analysisJob?.id}
       />
     </div>
   )
