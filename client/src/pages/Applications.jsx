@@ -7,7 +7,7 @@ import {
 } from '../hooks/useApplications.js'
 import { useJobs } from '../hooks/useJobs.js'
 import { useCvVersions } from '../hooks/useCvVersions.js'
-import Modal from '../components/Modal.jsx'
+import Modal, { ConfirmModal } from '../components/Modal.jsx'
 import StatusBadge, { ALL_STATUSES, STATUS_META } from '../components/StatusBadge.jsx'
 
 const EMPTY_FORM = { job_id: '', cv_version_id: '', match_score: '', notes: '' }
@@ -17,69 +17,125 @@ function formatDate(str) {
   return new Date(str).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-// ─── Inline status dropdown ───────────────────────────────────────────────────
+// ─── Shared style helpers ─────────────────────────────────────────────────────
+const inputStyle = (hasError) => ({
+  width: '100%',
+  background: 'var(--bg-input)',
+  border: `1px solid ${hasError ? 'var(--danger)' : 'var(--border-subtle)'}`,
+  borderRadius: 8,
+  height: 38,
+  padding: '0 12px',
+  fontSize: 13,
+  color: 'var(--text-primary)',
+  outline: 'none',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
+})
+
+// ─── Circular score ring ──────────────────────────────────────────────────────
+function ScoreRing({ score }) {
+  if (score == null) return <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)' }}>—</span>
+  const pct   = Math.max(0, Math.min(100, score))
+  const color = pct >= 80 ? 'var(--success)' : pct >= 60 ? 'var(--warning)' : 'var(--danger)'
+  const r     = 11
+  const circ  = 2 * Math.PI * r
+  const dash  = (pct / 100) * circ
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <svg width="28" height="28" viewBox="0 0 28 28" style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+        <circle cx="14" cy="14" r={r} fill="none" stroke="var(--border-subtle)" strokeWidth="2" />
+        <circle cx="14" cy="14" r={r} fill="none" stroke={color} strokeWidth="2"
+          strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round" />
+      </svg>
+      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 600, color, letterSpacing: '-0.02em' }}>
+        {pct}%
+      </span>
+    </div>
+  )
+}
+
+// ─── Status dropdown ──────────────────────────────────────────────────────────
 function StatusDropdown({ appId, current, onUpdate }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
   useEffect(() => {
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-    }
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     if (open) document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  function pick(status) {
-    if (status !== current) onUpdate(appId, status)
-    setOpen(false)
-  }
+  function pick(status) { if (status !== current) onUpdate(appId, status); setOpen(false) }
 
   return (
-    <div className="relative inline-block" ref={ref}>
+    <div style={{ position: 'relative', display: 'inline-block' }} ref={ref}>
       <button
         onClick={() => setOpen(v => !v)}
-        className="cursor-pointer hover:opacity-80 transition-opacity"
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', transition: 'opacity 0.15s' }}
         title="Click to change status"
+        onMouseEnter={e => { e.currentTarget.style.opacity = '0.75' }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
       >
         <StatusBadge status={current} />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-20 w-36 bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg shadow-xl py-1 overflow-hidden">
-          {ALL_STATUSES.map(s => (
-            <button
-              key={s}
-              onClick={() => pick(s)}
-              className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
-                s === current
-                  ? 'bg-[#2a2a2a] text-white'
-                  : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_META[s]?.cls.includes('blue') ? 'bg-blue-400' : STATUS_META[s]?.cls.includes('yellow') ? 'bg-yellow-400' : STATUS_META[s]?.cls.includes('orange') ? 'bg-orange-400' : STATUS_META[s]?.cls.includes('purple') ? 'bg-purple-400' : STATUS_META[s]?.cls.includes('red') ? 'bg-red-400' : STATUS_META[s]?.cls.includes('green') ? 'bg-green-400' : 'bg-gray-500'}`} />
-              {STATUS_META[s]?.label ?? s}
-              {s === current && <span className="ml-auto text-gray-600">✓</span>}
-            </button>
-          ))}
+        <div style={{
+          position: 'absolute', left: 0, top: '100%', marginTop: 4,
+          zIndex: 20, minWidth: 140,
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 10,
+          boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+          padding: '4px',
+          overflow: 'hidden',
+        }}>
+          {ALL_STATUSES.map(s => {
+            const meta = STATUS_META[s]
+            const isActive = s === current
+            return (
+              <button
+                key={s}
+                onClick={() => pick(s)}
+                style={{
+                  width: '100%', textAlign: 'left',
+                  padding: '7px 10px', borderRadius: 6, border: 'none',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  fontSize: 12, cursor: 'pointer',
+                  background: isActive ? 'var(--border-subtle)' : 'transparent',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  transition: 'background 0.1s, color 0.1s',
+                }}
+                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-primary)' } }}
+                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta?.color ?? 'var(--text-muted)', flexShrink: 0 }} />
+                {meta?.label ?? s}
+                {isActive && (
+                  <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 10 }}>✓</span>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
   )
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Applications() {
   const { data: apps = [], isLoading } = useApplications()
-  const { data: jobs = [] } = useJobs()
-  const { data: cvVersions = [] } = useCvVersions()
-  const createApp     = useCreateApplication()
-  const updateStatus  = useUpdateApplicationStatus()
-  const deleteApp     = useDeleteApplication()
+  const { data: jobs = [] }            = useJobs()
+  const { data: cvVersions = [] }      = useCvVersions()
+  const createApp    = useCreateApplication()
+  const updateStatus = useUpdateApplicationStatus()
+  const deleteApp    = useDeleteApplication()
 
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [errors, setErrors] = useState({})
+  const [modalOpen, setModalOpen]  = useState(false)
+  const [form, setForm]            = useState(EMPTY_FORM)
+  const [errors, setErrors]        = useState({})
+  const [confirmState, setConfirm] = useState({ open: false, target: null })
 
   function openModal() { setForm(EMPTY_FORM); setErrors({}); setModalOpen(true) }
   function closeModal() { setModalOpen(false) }
@@ -104,7 +160,6 @@ export default function Applications() {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
-
     try {
       await createApp.mutateAsync({
         job_id: form.job_id,
@@ -118,35 +173,50 @@ export default function Applications() {
     }
   }
 
-  function handleStatusChange(id, status) {
-    updateStatus.mutate({ id, status, note: null })
-  }
+  function handleStatusChange(id, status) { updateStatus.mutate({ id, status, note: null }) }
 
-  function handleDelete(app) {
-    const label = `${app.job?.company_name ?? ''} — ${app.job?.title ?? ''}`
-    if (!window.confirm(`Delete application for "${label.trim()}"?`)) return
-    deleteApp.mutate(app.id)
-  }
+  function askDelete(app) { setConfirm({ open: true, target: app }) }
+  function doDelete()     { if (confirmState.target) deleteApp.mutate(confirmState.target.id) }
 
-  const inputCls = (field) =>
-    `w-full bg-[#0f0f0f] border rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-blue-500 transition-colors ${errors[field] ? 'border-red-500' : 'border-[#2a2a2a]'}`
-
-  const selectCls = (field) =>
-    `w-full bg-[#0f0f0f] border rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500 transition-colors ${errors[field] ? 'border-red-500' : 'border-[#2a2a2a]'}`
+  const TH = ({ children, right }) => (
+    <th style={{
+      textAlign: right ? 'right' : 'left',
+      padding: '10px 16px',
+      fontSize: 11, fontWeight: 500,
+      color: 'var(--text-muted)',
+      textTransform: 'uppercase',
+      letterSpacing: '0.08em',
+      whiteSpace: 'nowrap',
+    }}>
+      {children}
+    </th>
+  )
 
   return (
-    <div className="p-8 max-w-7xl">
+    <div style={{ padding: '32px 36px', maxWidth: 1200 }}>
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 className="text-2xl font-bold text-white">Applications</h1>
-          <p className="text-gray-500 text-sm mt-1">Track every step of your job search</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+            Applications
+          </h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+            Track every step of your job search
+          </p>
         </div>
         <button
           onClick={openModal}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+            background: 'var(--accent-primary)', border: 'none', color: '#fff',
+            cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.15)'; e.currentTarget.style.boxShadow = '0 0 20px var(--accent-glow)' }}
+          onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.boxShadow = 'none' }}
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
           New Application
@@ -154,79 +224,118 @@ export default function Applications() {
       </div>
 
       {/* Table */}
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden">
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
         {isLoading ? (
-          <div className="py-16 text-center text-gray-600 text-sm">Loading…</div>
+          <LoadingState />
         ) : apps.length === 0 ? (
-          <div className="py-20 flex flex-col items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-[#2a2a2a] flex items-center justify-center">
-              <svg className="w-7 h-7 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
-              </svg>
-            </div>
-            <div className="text-center">
-              <p className="text-gray-400 text-sm font-medium">No applications yet</p>
-              <p className="text-gray-600 text-xs mt-1">Analyze a job and apply with one click</p>
-            </div>
-          </div>
+          <EmptyState />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[900px]">
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
-                <tr className="border-b border-[#2a2a2a]">
-                  {['Company', 'Role', 'CV Version', 'Date Applied', 'Status', 'Match', 'Notes', 'Actions'].map(h => (
-                    <th
-                      key={h}
-                      className={`text-left px-5 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap ${h === 'Actions' ? 'text-right' : ''}`}
-                    >
-                      {h}
-                    </th>
-                  ))}
+                <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                  <TH>Company / Role</TH>
+                  <TH>CV Version</TH>
+                  <TH>Date Applied</TH>
+                  <TH>Status</TH>
+                  <TH>Match</TH>
+                  <TH>Notes</TH>
+                  <TH right>Actions</TH>
                 </tr>
               </thead>
               <tbody>
-                {apps.map(app => (
-                  <tr key={app.id} className="border-b border-[#2a2a2a] last:border-0 hover:bg-[#222] transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-white whitespace-nowrap">
-                      {app.job?.company_name ?? '—'}
+                {apps.map((app, idx) => (
+                  <tr
+                    key={app.id}
+                    style={{
+                      borderBottom: idx < apps.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {/* Company + Role stacked */}
+                    <td style={{ padding: '12px 16px', maxWidth: 220 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {app.job?.company_name ?? '—'}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
+                        {app.job?.title ?? '—'}
+                      </div>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-300 max-w-[160px] truncate">
-                      {app.job?.title ?? '—'}
+
+                    {/* CV Version */}
+                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        fontSize: 12, color: 'var(--text-secondary)',
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 6, padding: '3px 8px',
+                      }}>
+                        {app.cv_version?.name ?? '—'}
+                        {app.cv_version?.target_type && (
+                          <span style={{ marginLeft: 6, color: 'var(--text-muted)', fontSize: 10 }}>
+                            {app.cv_version.target_type}
+                          </span>
+                        )}
+                      </span>
                     </td>
-                    <td className="px-5 py-3.5 text-gray-500 text-xs whitespace-nowrap">
-                      {app.cv_version?.name ?? '—'}
-                      {app.cv_version?.target_type && (
-                        <span className="ml-1.5 text-gray-600 bg-[#2a2a2a] px-1.5 py-0.5 rounded text-[10px]">
-                          {app.cv_version.target_type}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-gray-500 text-xs whitespace-nowrap">
+
+                    {/* Date */}
+                    <td style={{ padding: '12px 16px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {formatDate(app.applied_at)}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <StatusDropdown
-                        appId={app.id}
-                        current={app.status}
-                        onUpdate={handleStatusChange}
-                      />
+
+                    {/* Status dropdown */}
+                    <td style={{ padding: '12px 16px' }}>
+                      <StatusDropdown appId={app.id} current={app.status} onUpdate={handleStatusChange} />
                     </td>
-                    <td className="px-5 py-3.5 text-gray-400 text-xs font-mono">
-                      {app.match_score != null ? (
-                        <span className={`font-semibold ${app.match_score >= 70 ? 'text-green-400' : app.match_score >= 50 ? 'text-yellow-400' : 'text-gray-500'}`}>
-                          {app.match_score}%
-                        </span>
-                      ) : '—'}
+
+                    {/* Match score */}
+                    <td style={{ padding: '12px 16px' }}>
+                      <ScoreRing score={app.match_score} />
                     </td>
-                    <td className="px-5 py-3.5 text-gray-500 text-xs max-w-[180px] truncate">
-                      {app.notes || '—'}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <button
-                        onClick={() => handleDelete(app)}
-                        className="text-gray-600 hover:text-red-400 transition-colors text-xs px-2 py-1 rounded hover:bg-red-500/10"
+
+                    {/* Notes */}
+                    <td style={{ padding: '12px 16px', maxWidth: 180 }}>
+                      <span
+                        title={app.notes || ''}
+                        style={{
+                          fontSize: 12, color: 'var(--text-muted)',
+                          display: 'block', overflow: 'hidden',
+                          textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}
                       >
-                        Delete
+                        {app.notes || '—'}
+                      </span>
+                    </td>
+
+                    {/* Delete */}
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => askDelete(app)}
+                        style={{
+                          width: 30, height: 30, borderRadius: 8,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-subtle)',
+                          color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.color = 'var(--danger)'
+                          e.currentTarget.style.borderColor = 'var(--danger)'
+                          e.currentTarget.style.background = 'var(--danger-bg)'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.color = 'var(--text-muted)'
+                          e.currentTarget.style.borderColor = 'var(--border-subtle)'
+                          e.currentTarget.style.background = 'var(--bg-elevated)'
+                        }}
+                        title="Delete"
+                      >
+                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
                       </button>
                     </td>
                   </tr>
@@ -239,97 +348,152 @@ export default function Applications() {
 
       {/* New Application Modal */}
       <Modal isOpen={modalOpen} onClose={closeModal} title="New Application">
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {errors.submit && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--danger-bg)', border: '1px solid rgba(239,68,68,0.25)', fontSize: 12, color: 'var(--danger)' }}>
               {errors.submit}
-            </p>
+            </div>
           )}
 
-          {/* Job */}
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
-              Job <span className="text-red-500">*</span>
-            </label>
-            <select name="job_id" value={form.job_id} onChange={handleChange} className={selectCls('job_id')}>
+          <FormField label="Job" required error={errors.job_id}>
+            <select name="job_id" value={form.job_id} onChange={handleChange}
+              style={{ ...inputStyle(!!errors.job_id), color: form.job_id ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer' }}
+              onFocus={e => { e.target.style.borderColor = 'var(--border-active)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
+              onBlur={e => { e.target.style.borderColor = errors.job_id ? 'var(--danger)' : 'var(--border-subtle)'; e.target.style.boxShadow = 'none' }}
+            >
               <option value="">Select a job…</option>
-              {jobs.map(j => (
-                <option key={j.id} value={j.id}>{j.company_name} — {j.title}</option>
-              ))}
+              {jobs.map(j => <option key={j.id} value={j.id}>{j.company_name} — {j.title}</option>)}
             </select>
-            {jobs.length === 0 && (
-              <p className="text-xs text-gray-600 mt-1">No jobs yet — add one in the Jobs page first.</p>
-            )}
-            {errors.job_id && <p className="text-xs text-red-400 mt-1">{errors.job_id}</p>}
-          </div>
+            {jobs.length === 0 && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>No jobs yet — add one in the Jobs page first.</p>}
+          </FormField>
 
-          {/* CV Version */}
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
-              CV Version <span className="text-red-500">*</span>
-            </label>
-            <select name="cv_version_id" value={form.cv_version_id} onChange={handleChange} className={selectCls('cv_version_id')}>
+          <FormField label="CV Version" required error={errors.cv_version_id}>
+            <select name="cv_version_id" value={form.cv_version_id} onChange={handleChange}
+              style={{ ...inputStyle(!!errors.cv_version_id), color: form.cv_version_id ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer' }}
+              onFocus={e => { e.target.style.borderColor = 'var(--border-active)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
+              onBlur={e => { e.target.style.borderColor = errors.cv_version_id ? 'var(--danger)' : 'var(--border-subtle)'; e.target.style.boxShadow = 'none' }}
+            >
               <option value="">Select a CV version…</option>
-              {cvVersions.map(cv => (
-                <option key={cv.id} value={cv.id}>{cv.name} ({cv.target_type})</option>
-              ))}
+              {cvVersions.map(cv => <option key={cv.id} value={cv.id}>{cv.name} ({cv.target_type})</option>)}
             </select>
-            {cvVersions.length === 0 && (
-              <p className="text-xs text-gray-600 mt-1">No CV versions yet — add one in the CV Versions page first.</p>
-            )}
-            {errors.cv_version_id && <p className="text-xs text-red-400 mt-1">{errors.cv_version_id}</p>}
-          </div>
+            {cvVersions.length === 0 && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>No CV versions yet — add one in CV Versions first.</p>}
+          </FormField>
 
-          {/* Match Score */}
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">
-              Match Score <span className="text-gray-600">(0–100, optional)</span>
-            </label>
-            <input
-              name="match_score"
-              type="number"
-              min="0"
-              max="100"
-              value={form.match_score}
-              onChange={handleChange}
-              placeholder="e.g. 82"
-              className={inputCls('match_score')}
+          <FormField label="Match Score" hint="0–100, optional" error={errors.match_score}>
+            <input name="match_score" type="number" min="0" max="100"
+              value={form.match_score} onChange={handleChange} placeholder="e.g. 82"
+              style={inputStyle(!!errors.match_score)}
+              onFocus={e => { e.target.style.borderColor = 'var(--border-active)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
+              onBlur={e => { e.target.style.borderColor = errors.match_score ? 'var(--danger)' : 'var(--border-subtle)'; e.target.style.boxShadow = 'none' }}
             />
-            {errors.match_score && <p className="text-xs text-red-400 mt-1">{errors.match_score}</p>}
-          </div>
+          </FormField>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1.5">Notes</label>
-            <textarea
-              name="notes"
-              value={form.notes}
-              onChange={handleChange}
-              placeholder="Any notes about this application…"
-              rows={3}
-              className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-blue-500 transition-colors resize-none"
+          <FormField label="Notes">
+            <textarea name="notes" value={form.notes} onChange={handleChange}
+              placeholder="Any notes about this application…" rows={3}
+              style={{
+                width: '100%', background: 'var(--bg-input)',
+                border: '1px solid var(--border-subtle)', borderRadius: 8,
+                padding: '10px 12px', fontSize: 13, color: 'var(--text-primary)',
+                outline: 'none', resize: 'none', minHeight: 80,
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
+              onFocus={e => { e.target.style.borderColor = 'var(--border-active)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border-subtle)'; e.target.style.boxShadow = 'none' }}
             />
-          </div>
+          </FormField>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={closeModal}
-              className="flex-1 bg-[#2a2a2a] hover:bg-[#333] text-gray-300 text-sm font-medium py-2.5 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={createApp.isPending}
-              className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
-            >
+          <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+            <BtnGhost onClick={closeModal} type="button">Cancel</BtnGhost>
+            <BtnPrimary type="submit" disabled={createApp.isPending}>
               {createApp.isPending ? 'Creating…' : 'Create Application'}
-            </button>
+            </BtnPrimary>
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={confirmState.open}
+        onClose={() => setConfirm({ open: false, target: null })}
+        onConfirm={doDelete}
+        title="Delete Application?"
+        message={confirmState.target ? `Application for "${confirmState.target.job?.company_name ?? ''} — ${confirmState.target.job?.title ?? ''}" will be permanently deleted.` : ''}
+      />
+    </div>
+  )
+}
+
+function FormField({ label, required, hint, error, children }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: '0.02em' }}>
+        {label}
+        {required && <span style={{ color: 'var(--danger)', marginLeft: 3 }}>*</span>}
+        {hint && <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>({hint})</span>}
+      </label>
+      {children}
+      {error && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--danger)' }}>{error}</p>}
+    </div>
+  )
+}
+
+function BtnPrimary({ children, disabled, type = 'button', onClick }) {
+  return (
+    <button
+      type={type} disabled={disabled} onClick={onClick}
+      style={{
+        flex: 1, padding: '9px 0', borderRadius: 8, fontSize: 13, fontWeight: 500,
+        background: disabled ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+        border: 'none', color: '#fff', cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.6 : 1, transition: 'all 0.2s',
+      }}
+      onMouseEnter={e => { if (!disabled) { e.currentTarget.style.filter = 'brightness(1.12)'; e.currentTarget.style.boxShadow = '0 0 20px var(--accent-glow)' } }}
+      onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.boxShadow = 'none' }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function BtnGhost({ children, disabled, type = 'button', onClick }) {
+  return (
+    <button
+      type={type} disabled={disabled} onClick={onClick}
+      style={{
+        flex: 1, padding: '9px 0', borderRadius: 8, fontSize: 13, fontWeight: 500,
+        background: 'transparent', border: '1px solid var(--border-default)',
+        color: 'var(--text-secondary)', cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'all 0.15s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div style={{ padding: '60px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+      <div className="anim-spin" style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid var(--border-default)', borderTopColor: 'var(--accent-primary)' }} />
+      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading…</span>
+    </div>
+  )
+}
+
+function EmptyState() {
+  return (
+    <div style={{ padding: '60px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+      <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} style={{ color: 'var(--text-muted)' }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>No applications yet</p>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Analyze a job and apply with one click</p>
+      </div>
     </div>
   )
 }

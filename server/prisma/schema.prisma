@@ -35,6 +35,7 @@ enum ApplicationStatus {
 
 model Job {
   id           String   @id @default(cuid())
+  user_id      String?
   company_name String
   title        String
   description  String?  @db.Text
@@ -46,11 +47,13 @@ model Job {
   cover_letters CoverLetter[]
   ai_analyses   AiAnalysis[]
 
+  @@index([user_id])
   @@map("jobs")
 }
 
 model CvVersion {
   id          String     @id @default(cuid())
+  user_id     String?
   name        String
   target_type TargetType
   file_url    String?
@@ -59,6 +62,7 @@ model CvVersion {
 
   applications Application[]
 
+  @@index([user_id])
   @@map("cv_versions")
 }
 
@@ -76,6 +80,7 @@ model CoverLetter {
 
 model Application {
   id              String            @id @default(cuid())
+  user_id         String?
   job_id          String
   cv_version_id   String
   cover_letter_id String?
@@ -91,11 +96,13 @@ model Application {
 
   status_history StatusHistory[]
 
+  @@index([user_id])
   @@map("applications")
 }
 
 model AiAnalysis {
   id                String   @id @default(cuid())
+  user_id           String?
   job_id            String
   required_skills   String[]
   technologies      String[]
@@ -113,6 +120,7 @@ model AiAnalysis {
 
   job Job @relation(fields: [job_id], references: [id], onDelete: Cascade)
 
+  @@index([user_id])
   @@map("ai_analyses")
 }
 
@@ -127,4 +135,15 @@ model StatusHistory {
   application Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
 
   @@map("status_history")
+}
+
+model UserProfile {
+  id         String   @id @default(cuid())
+  user_id    String   @unique
+  full_name  String?
+  avatar_url String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("user_profiles")
 }

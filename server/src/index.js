@@ -10,8 +10,11 @@ import applicationsRouter from './routes/applications.js'
 import coverLettersRouter from './routes/coverLetters.js'
 import statusHistoryRouter from './routes/statusHistory.js'
 import aiRouter from './routes/ai.js'
+import cvGeneratorRouter from './routes/cvGenerator.js'
+import profileRouter from './routes/profile.js'
 import { errorHandler, notFound } from './middleware/errorHandler.js'
 import { startKeepAlive } from './lib/keepAlive.js'
+import { requireAuth } from './middleware/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -31,12 +34,14 @@ app.get('/api/health', (req, res) =>
   res.json({ data: { status: 'ok', timestamp: new Date().toISOString() }, error: null, message: 'Server is healthy' })
 )
 
-app.use('/api/jobs', jobsRouter)
-app.use('/api/cv-versions', cvVersionsRouter)
-app.use('/api/applications', applicationsRouter)
-app.use('/api/cover-letters', coverLettersRouter)
-app.use('/api/status-history', statusHistoryRouter)
-app.use('/api/ai', aiRouter)
+app.use('/api/jobs',          requireAuth, jobsRouter)
+app.use('/api/cv-versions',   requireAuth, cvVersionsRouter)
+app.use('/api/applications',  requireAuth, applicationsRouter)
+app.use('/api/cover-letters', requireAuth, coverLettersRouter)
+app.use('/api/status-history',requireAuth, statusHistoryRouter)
+app.use('/api/ai',            requireAuth, aiRouter)
+app.use('/api/cv-generator',  requireAuth, cvGeneratorRouter)
+app.use('/api/profile',       requireAuth, profileRouter)
 
 // ─── Error handling ──────────────────────────────────────────────────────────
 app.use(notFound)

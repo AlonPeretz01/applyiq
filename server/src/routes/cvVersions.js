@@ -9,6 +9,7 @@ const VALID_TARGET_TYPES = ['FULLSTACK', 'BACKEND', 'DATA', 'STUDENT']
 router.get('/', async (req, res, next) => {
   try {
     const versions = await prisma.cvVersion.findMany({
+      where: { user_id: req.user.id },
       orderBy: { created_at: 'desc' },
     })
     res.json({ data: versions, error: null, message: 'CV versions retrieved successfully' })
@@ -20,9 +21,10 @@ router.get('/', async (req, res, next) => {
 // ─── GET /api/cv-versions/:id ─────────────────────────────────────────────────
 router.get('/:id', async (req, res, next) => {
   try {
-    const cv = await prisma.cvVersion.findUniqueOrThrow({
-      where: { id: req.params.id },
-    })
+    const cv = await prisma.cvVersion.findUnique({ where: { id: req.params.id } })
+    if (!cv || cv.user_id !== req.user.id) {
+      return res.status(404).json({ data: null, error: 'CV version not found', message: 'CV version not found' })
+    }
     res.json({ data: cv, error: null, message: 'CV version retrieved successfully' })
   } catch (err) {
     next(err)
@@ -33,7 +35,6 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const { name, target_type, plain_text } = req.body
-
     if (!name?.trim()) {
       return res.status(400).json({ data: null, error: 'name is required', message: 'name is required' })
     }
@@ -47,13 +48,13 @@ router.post('/', async (req, res, next) => {
         message: `target_type must be one of: ${VALID_TARGET_TYPES.join(', ')}`,
       })
     }
-
     const cv = await prisma.cvVersion.create({
       data: {
-        name: name.trim(),
+        user_id:    req.user.id,
+        name:       name.trim(),
         target_type,
         plain_text: plain_text ?? null,
-        file_url: null,
+        file_url:   null,
       },
     })
     res.status(201).json({ data: cv, error: null, message: 'CV version created successfully' })
@@ -65,8 +66,11 @@ router.post('/', async (req, res, next) => {
 // ─── PUT /api/cv-versions/:id ─────────────────────────────────────────────────
 router.put('/:id', async (req, res, next) => {
   try {
+    const existing = await prisma.cvVersion.findUnique({ where: { id: req.params.id }, select: { user_id: true } })
+    if (!existing || existing.user_id !== req.user.id) {
+      return res.status(404).json({ data: null, error: 'CV version not found', message: 'CV version not found' })
+    }
     const { name, target_type, plain_text } = req.body
-
     if (name !== undefined && !name?.trim()) {
       return res.status(400).json({ data: null, error: 'name cannot be blank', message: 'name cannot be blank' })
     }
@@ -77,7 +81,6 @@ router.put('/:id', async (req, res, next) => {
         message: `target_type must be one of: ${VALID_TARGET_TYPES.join(', ')}`,
       })
     }
-
     const cv = await prisma.cvVersion.update({
       where: { id: req.params.id },
       data: {
@@ -95,6 +98,10 @@ router.put('/:id', async (req, res, next) => {
 // ─── DELETE /api/cv-versions/:id ──────────────────────────────────────────────
 router.delete('/:id', async (req, res, next) => {
   try {
+    const existing = await prisma.cvVersion.findUnique({ where: { id: req.params.id }, select: { user_id: true } })
+    if (!existing || existing.user_id !== req.user.id) {
+      return res.status(404).json({ data: null, error: 'CV version not found', message: 'CV version not found' })
+    }
     await prisma.cvVersion.delete({ where: { id: req.params.id } })
     res.json({ data: null, error: null, message: 'CV version deleted successfully' })
   } catch (err) {

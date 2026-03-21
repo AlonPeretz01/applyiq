@@ -26,8 +26,8 @@ export function ToastProvider({ children }) {
 
   const toast = {
     success: (msg, duration) => addToast(msg, 'success', duration),
-    error: (msg, duration) => addToast(msg, 'error', duration),
-    info: (msg, duration) => addToast(msg, 'info', duration),
+    error:   (msg, duration) => addToast(msg, 'error',   duration),
+    info:    (msg, duration) => addToast(msg, 'info',    duration),
   }
 
   return (
@@ -44,58 +44,73 @@ export function useToast() {
   return ctx
 }
 
-// ─── Toast container ──────────────────────────────────────────────────────────
-
-const TYPE_STYLES = {
-  success: { bar: 'bg-green-500',  icon: 'text-green-400',  bg: 'border-green-500/20' },
-  error:   { bar: 'bg-red-500',    icon: 'text-red-400',    bg: 'border-red-500/20'   },
-  info:    { bar: 'bg-blue-500',   icon: 'text-blue-400',   bg: 'border-blue-500/20'  },
+// ─── Design tokens per type ───────────────────────────────────────────────────
+const TYPE_TOKENS = {
+  success: { accent: 'var(--success)',  icon: 'var(--success)',  label: 'Success' },
+  error:   { accent: 'var(--danger)',   icon: 'var(--danger)',   label: 'Error'   },
+  info:    { accent: 'var(--info)',     icon: 'var(--info)',     label: 'Info'    },
 }
 
-function CheckIcon() {
+function SuccessIcon() {
   return (
-    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
     </svg>
   )
 }
-
-function XCircleIcon() {
+function ErrorIcon() {
   return (
-    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   )
 }
-
 function InfoIcon() {
   return (
-    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
     </svg>
   )
 }
-
-const ICONS = { success: <CheckIcon />, error: <XCircleIcon />, info: <InfoIcon /> }
+const ICONS = { success: <SuccessIcon />, error: <ErrorIcon />, info: <InfoIcon /> }
 
 function ToastItem({ toast, dismiss }) {
-  const s = TYPE_STYLES[toast.type] ?? TYPE_STYLES.info
+  const t = TYPE_TOKENS[toast.type] ?? TYPE_TOKENS.info
   return (
     <div
-      className={`relative flex items-start gap-3 bg-[#1f1f1f] border ${s.bg} rounded-lg px-4 py-3 shadow-xl min-w-[260px] max-w-sm overflow-hidden`}
+      className="anim-slide-in-right"
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        minWidth: 270,
+        maxWidth: 360,
+        padding: '12px 40px 12px 16px',
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-default)',
+        borderLeft: `3px solid ${t.accent}`,
+        borderRadius: 10,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        overflow: 'hidden',
+      }}
     >
-      {/* Colored left bar */}
-      <div className={`absolute left-0 top-0 bottom-0 w-1 ${s.bar} rounded-l-lg`} />
-
-      <span className={`mt-0.5 ${s.icon}`}>{ICONS[toast.type]}</span>
-
-      <p className="flex-1 text-sm text-gray-200 leading-snug pr-4">{toast.message}</p>
-
+      <span style={{ color: t.icon, flexShrink: 0, marginTop: 1 }}>{ICONS[toast.type]}</span>
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.45, flex: 1 }}>
+        {toast.message}
+      </p>
       <button
         onClick={() => dismiss(toast.id)}
-        className="absolute top-2.5 right-2.5 text-gray-600 hover:text-gray-300 transition-colors"
+        style={{
+          position: 'absolute', top: 10, right: 10,
+          background: 'none', border: 'none', padding: 2,
+          color: 'var(--text-muted)', cursor: 'pointer', lineHeight: 1,
+          transition: 'color 0.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}
       >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
@@ -106,7 +121,7 @@ function ToastItem({ toast, dismiss }) {
 function ToastContainer({ toasts, dismiss }) {
   if (toasts.length === 0) return null
   return (
-    <div className="fixed bottom-5 right-5 z-[100] flex flex-col gap-2.5 items-end">
+    <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} dismiss={dismiss} />
       ))}
