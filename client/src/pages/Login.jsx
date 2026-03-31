@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
-// ─── SVG Icons ────────────────────────────────────────────────────────────────
+// ─── Icons ────────────────────────────────────────────────────────────────────
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -23,32 +23,163 @@ function GitHubIcon() {
   )
 }
 
-function Spinner({ size = 16 }) {
+function CheckIcon() {
+  return (
+    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#22C55E" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  )
+}
+
+function Spinner({ size = 15 }) {
   return (
     <div className="anim-spin" style={{
       width: size, height: size, borderRadius: '50%',
-      border: '2px solid rgba(255,255,255,0.25)',
+      border: '2px solid rgba(255,255,255,0.3)',
       borderTopColor: 'currentColor', flexShrink: 0,
     }} />
   )
 }
 
-export default function Login() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
+// ─── Shared primitives ────────────────────────────────────────────────────────
+function TextInput({ type = 'text', placeholder, value, onChange, hasError, autoComplete }) {
+  return (
+    <input
+      type={type}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      autoComplete={autoComplete}
+      style={{
+        width: '100%', background: 'var(--bg-input)', borderRadius: 8, height: 42,
+        padding: '0 14px', fontSize: 14, color: 'var(--text-primary)', outline: 'none',
+        boxSizing: 'border-box', transition: 'border-color 0.15s, box-shadow 0.15s',
+        border: `1px solid ${hasError ? 'var(--danger)' : 'var(--border-subtle)'}`,
+      }}
+      onFocus={e => {
+        e.target.style.borderColor = hasError ? 'var(--danger)' : 'var(--border-active)'
+        e.target.style.boxShadow = hasError ? '0 0 0 3px rgba(239,68,68,0.12)' : '0 0 0 3px var(--accent-glow)'
+      }}
+      onBlur={e => {
+        e.target.style.borderColor = hasError ? 'var(--danger)' : 'var(--border-subtle)'
+        e.target.style.boxShadow = 'none'
+      }}
+    />
+  )
+}
 
-  const [mode, setMode]         = useState('signin')  // 'signin' | 'signup'
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading]   = useState(null)       // 'google'|'github'|'email'|null
-  const [error, setError]       = useState(null)
-  const [success, setSuccess]   = useState(null)
+function FieldError({ msg }) {
+  if (!msg) return null
+  return <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--danger)', lineHeight: 1.4 }}>{msg}</p>
+}
 
-  // Redirect if already logged in
-  if (user) {
-    navigate('/', { replace: true })
-    return null
-  }
+function AlertBox({ type, message }) {
+  const isError = type === 'error'
+  return (
+    <div style={{
+      padding: '10px 14px', borderRadius: 8, fontSize: 12, lineHeight: 1.55,
+      background: isError ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+      border: `1px solid ${isError ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)'}`,
+      color: isError ? 'var(--danger)' : 'var(--success)',
+    }}>
+      {message}
+    </div>
+  )
+}
+
+const OAUTH_BTN_BASE = {
+  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+  padding: '11px 0', borderRadius: 10, fontSize: 14, fontWeight: 500,
+  border: '1px solid var(--border-default)', background: 'var(--bg-elevated)',
+  color: 'var(--text-primary)', transition: 'border-color 0.15s, background 0.15s',
+  cursor: 'pointer',
+}
+
+function OAuthButtons({ loading, onOAuth }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {[
+        { provider: 'google', label: 'Continue with Google', icon: <GoogleIcon /> },
+        { provider: 'github', label: 'Continue with GitHub', icon: <GitHubIcon /> },
+      ].map(({ provider, label, icon }) => (
+        <button
+          key={provider}
+          type="button"
+          onClick={() => onOAuth(provider)}
+          disabled={!!loading}
+          style={{ ...OAUTH_BTN_BASE, opacity: loading ? 0.6 : 1 }}
+          onMouseEnter={e => { if (!loading) e.currentTarget.style.borderColor = 'var(--border-active)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
+        >
+          {loading === provider ? <Spinner /> : icon}
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function Divider() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+      <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>or</span>
+      <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+    </div>
+  )
+}
+
+function SubmitButton({ loading, loadingKey, label, loadingLabel }) {
+  const isLoading = loading === loadingKey
+  return (
+    <button
+      type="submit"
+      disabled={!!loading}
+      style={{
+        width: '100%', padding: '11px 0', borderRadius: 10, fontSize: 14, fontWeight: 600,
+        background: isLoading ? 'var(--bg-elevated)' : 'var(--accent-primary)',
+        border: 'none', color: '#fff',
+        cursor: loading ? 'not-allowed' : 'pointer',
+        opacity: loading ? 0.7 : 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        transition: 'all 0.2s', marginTop: 4,
+      }}
+      onMouseEnter={e => { if (!loading) { e.currentTarget.style.filter = 'brightness(1.12)'; e.currentTarget.style.boxShadow = '0 0 20px var(--accent-glow)' } }}
+      onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.boxShadow = 'none' }}
+    >
+      {isLoading ? <><Spinner />{loadingLabel}</> : label}
+    </button>
+  )
+}
+
+// ─── Logo ─────────────────────────────────────────────────────────────────────
+function Logo() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 30 }}>
+      <div style={{
+        width: 46, height: 46, borderRadius: 13,
+        background: 'linear-gradient(135deg, #7C6FF7, #A78BFA)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 0 28px rgba(124,111,247,0.45)', marginBottom: 14,
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" />
+        </svg>
+      </div>
+      <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+        ApplyIQ
+      </span>
+    </div>
+  )
+}
+
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+function LoginScreen({ onSwitch }) {
+  const [email, setEmail]         = useState('')
+  const [password, setPassword]   = useState('')
+  const [loading, setLoading]     = useState(null)
+  const [error, setError]         = useState(null)
+  const [resetSent, setResetSent] = useState(false)
 
   async function handleOAuth(provider) {
     setLoading(provider)
@@ -57,175 +188,308 @@ export default function Login() {
       provider,
       options: { redirectTo: window.location.origin },
     })
-    if (error) {
-      setError(error.message)
-      setLoading(null)
-    }
-    // On success, browser redirects — no further action needed
+    if (error) { setError(error.message); setLoading(null) }
   }
 
-  async function handleEmailAuth(e) {
+  async function handleSignIn(e) {
     e.preventDefault()
     if (!email.trim() || !password) { setError('Email and password are required'); return }
     setLoading('email')
     setError(null)
-    setSuccess(null)
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    if (error) { setError(error.message); setLoading(null) }
+    // on success: onAuthStateChange fires → AuthContext sets user → ProtectedRoute navigates to /
+  }
 
-    if (mode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) { setError(error.message); setLoading(null) }
-      // On success, onAuthStateChange fires → user set → ProtectedRoute redirects
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) { setError(error.message) }
-      else { setSuccess('Check your email to confirm your account, then sign in.') }
-      setLoading(null)
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setError('Enter your email address first, then click "Forgot password?"')
+      return
     }
+    setLoading('reset')
+    setError(null)
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    setLoading(null)
+    if (error) setError(error.message)
+    else setResetSent(true)
   }
 
-  const oauthBtnStyle = {
-    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-    padding: '11px 0', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer',
-    border: '1px solid var(--border-default)', background: 'var(--bg-elevated)',
-    color: 'var(--text-primary)', transition: 'all 0.15s',
+  return (
+    <div className="anim-fade-in">
+      <div style={{ textAlign: 'center', marginBottom: 26 }}>
+        <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          Welcome back
+        </h2>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+          Sign in to your ApplyIQ account
+        </p>
+      </div>
+
+      <OAuthButtons loading={loading} onOAuth={handleOAuth} />
+      <Divider />
+
+      <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <TextInput
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setError(null) }}
+          autoComplete="email"
+        />
+
+        <div>
+          <TextInput
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => { setPassword(e.target.value); setError(null) }}
+            autoComplete="current-password"
+          />
+          <div style={{ textAlign: 'right', marginTop: 7 }}>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={!!loading}
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: 12, color: 'var(--accent-primary)', opacity: loading === 'reset' ? 0.6 : 1,
+              }}
+            >
+              {loading === 'reset' ? 'Sending…' : 'Forgot password?'}
+            </button>
+          </div>
+        </div>
+
+        {resetSent && <AlertBox type="success" message="Password reset email sent! Check your inbox." />}
+        {error && <AlertBox type="error" message={error} />}
+
+        <SubmitButton loading={loading} loadingKey="email" label="Sign In" loadingLabel="Signing in…" />
+      </form>
+
+      <p style={{ margin: '22px 0 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+        {"Don't have an account?"}{' '}
+        <button
+          type="button"
+          onClick={onSwitch}
+          style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: 0 }}
+        >
+          Create one →
+        </button>
+      </p>
+    </div>
+  )
+}
+
+// ─── Signup Screen ────────────────────────────────────────────────────────────
+function SignupScreen({ onSwitch }) {
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail]       = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm]   = useState('')
+  const [loading, setLoading]   = useState(null)
+  const [errors, setErrors]     = useState({})
+  const [success, setSuccess]   = useState(false)
+
+  function clearFieldError(field) {
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }))
   }
 
-  const inputStyle = {
-    width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-subtle)',
-    borderRadius: 8, height: 42, padding: '0 14px', fontSize: 14, color: 'var(--text-primary)',
-    outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
+  async function handleOAuth(provider) {
+    setLoading(provider)
+    setErrors({})
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin },
+    })
+    if (error) { setErrors({ general: error.message }); setLoading(null) }
+  }
+
+  function validate() {
+    const e = {}
+    if (!email.trim()) e.email = 'Email is required'
+    if (!password) e.password = 'Password is required'
+    else if (password.length < 8) e.password = 'Password must be at least 8 characters'
+    if (!confirm) e.confirm = 'Please confirm your password'
+    else if (confirm !== password) e.confirm = 'Passwords do not match'
+    return e
+  }
+
+  async function handleSignUp(e) {
+    e.preventDefault()
+    const errs = validate()
+    if (Object.keys(errs).length) { setErrors(errs); return }
+    setLoading('email')
+    setErrors({})
+    const { error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { full_name: fullName.trim() || null } },
+    })
+    setLoading(null)
+    if (error) setErrors({ general: error.message })
+    else setSuccess(true)
+  }
+
+  if (success) {
+    return (
+      <div className="anim-fade-in" style={{ textAlign: 'center', padding: '8px 0' }}>
+        <div style={{
+          width: 58, height: 58, borderRadius: '50%', margin: '0 auto 18px',
+          background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <CheckIcon />
+        </div>
+        <h2 style={{ margin: '0 0 10px', fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          Check your email
+        </h2>
+        <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+          We sent a confirmation link to
+        </p>
+        <p style={{ margin: '0 0 26px', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+          {email}
+        </p>
+        <p style={{ margin: '0 0 26px', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+          Click the link in the email to activate your account, then sign in.
+        </p>
+        <button
+          type="button"
+          onClick={onSwitch}
+          style={{
+            background: 'none', border: '1px solid var(--border-default)', borderRadius: 8,
+            padding: '9px 22px', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer',
+            transition: 'border-color 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
+        >
+          ← Back to sign in
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="anim-fade-in">
+      <div style={{ textAlign: 'center', marginBottom: 26 }}>
+        <h2 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          Start tracking smarter
+        </h2>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+          Create your free account — 30 days full access
+        </p>
+      </div>
+
+      <OAuthButtons loading={loading} onOAuth={handleOAuth} />
+      <Divider />
+
+      <form onSubmit={handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <TextInput
+          type="text"
+          placeholder="Full name (optional)"
+          value={fullName}
+          onChange={e => setFullName(e.target.value)}
+          autoComplete="name"
+        />
+
+        <div>
+          <TextInput
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={e => { setEmail(e.target.value); clearFieldError('email') }}
+            hasError={!!errors.email}
+            autoComplete="email"
+          />
+          <FieldError msg={errors.email} />
+        </div>
+
+        <div>
+          <TextInput
+            type="password"
+            placeholder="Password (8+ characters)"
+            value={password}
+            onChange={e => { setPassword(e.target.value); clearFieldError('password') }}
+            hasError={!!errors.password}
+            autoComplete="new-password"
+          />
+          <FieldError msg={errors.password} />
+        </div>
+
+        <div>
+          <TextInput
+            type="password"
+            placeholder="Confirm password"
+            value={confirm}
+            onChange={e => { setConfirm(e.target.value); clearFieldError('confirm') }}
+            hasError={!!errors.confirm}
+            autoComplete="new-password"
+          />
+          <FieldError msg={errors.confirm} />
+        </div>
+
+        {errors.general && <AlertBox type="error" message={errors.general} />}
+
+        <SubmitButton loading={loading} loadingKey="email" label="Create Account" loadingLabel="Creating account…" />
+      </form>
+
+      <p style={{ margin: '22px 0 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+        Already have an account?{' '}
+        <button
+          type="button"
+          onClick={onSwitch}
+          style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: 0 }}
+        >
+          Sign in →
+        </button>
+      </p>
+
+      <p style={{ margin: '14px 0 0', textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        By signing up you agree to our{' '}
+        <span style={{ color: 'var(--text-secondary)' }}>Terms of Service</span>
+      </p>
+    </div>
+  )
+}
+
+// ─── Page shell ───────────────────────────────────────────────────────────────
+export default function Login() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [mode, setMode] = useState('signin')
+
+  if (user) {
+    navigate('/', { replace: true })
+    return null
   }
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-base)', padding: '24px 16px',
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg-base)',
+      backgroundImage: 'radial-gradient(rgba(124,111,247,0.12) 1px, transparent 1px)',
+      backgroundSize: '28px 28px',
+      padding: '24px 16px',
     }}>
-      <div className="anim-slide-up" style={{
-        width: '100%', maxWidth: 420,
-        background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-        borderRadius: 20, padding: '40px 36px',
+      <div style={{
+        width: '100%',
+        maxWidth: 440,
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 20,
+        padding: '40px 36px',
         boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,111,247,0.08)',
       }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: '#7C6FF7', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 24px rgba(124,111,247,0.5)', marginBottom: 14,
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" />
-            </svg>
-          </div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            ApplyIQ
-          </h1>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
-            Track smarter. Apply better.
-          </p>
-        </div>
-
-        {/* OAuth buttons */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-          <button
-            onClick={() => handleOAuth('google')}
-            disabled={!!loading}
-            style={{ ...oauthBtnStyle, opacity: loading ? 0.6 : 1 }}
-            onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = 'var(--border-active)'; e.currentTarget.style.background = 'var(--bg-elevated)' } }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)' }}
-          >
-            {loading === 'google' ? <Spinner /> : <GoogleIcon />}
-            Continue with Google
-          </button>
-
-          <button
-            onClick={() => handleOAuth('github')}
-            disabled={!!loading}
-            style={{ ...oauthBtnStyle, opacity: loading ? 0.6 : 1 }}
-            onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = 'var(--border-active)'; e.currentTarget.style.background = 'var(--bg-elevated)' } }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.background = 'var(--bg-elevated)' }}
-          >
-            {loading === 'github' ? <Spinner /> : <GitHubIcon />}
-            Continue with GitHub
-          </button>
-        </div>
-
-        {/* Divider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>or</span>
-          <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
-        </div>
-
-        {/* Email form */}
-        <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input
-            type="email"
-            placeholder="Email address"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={inputStyle}
-            onFocus={e => { e.target.style.borderColor = 'var(--border-active)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
-            onBlur={e => { e.target.style.borderColor = 'var(--border-subtle)'; e.target.style.boxShadow = 'none' }}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            style={inputStyle}
-            onFocus={e => { e.target.style.borderColor = 'var(--border-active)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
-            onBlur={e => { e.target.style.borderColor = 'var(--border-subtle)'; e.target.style.boxShadow = 'none' }}
-          />
-
-          {/* Error / Success */}
-          {error && (
-            <div style={{
-              padding: '10px 12px', borderRadius: 8, fontSize: 12,
-              background: 'var(--danger-bg)', border: '1px solid rgba(239,68,68,0.25)', color: 'var(--danger)',
-            }}>
-              {error}
-            </div>
-          )}
-          {success && (
-            <div style={{
-              padding: '10px 12px', borderRadius: 8, fontSize: 12,
-              background: 'var(--success-bg)', border: '1px solid rgba(34,197,94,0.25)', color: 'var(--success)',
-            }}>
-              {success}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={!!loading}
-            style={{
-              width: '100%', padding: '11px 0', borderRadius: 10, fontSize: 14, fontWeight: 500,
-              background: loading === 'email' ? 'var(--bg-elevated)' : 'var(--accent-primary)',
-              border: 'none', color: '#fff',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { if (!loading) { e.currentTarget.style.filter = 'brightness(1.12)'; e.currentTarget.style.boxShadow = '0 0 20px var(--accent-glow)' } }}
-            onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.boxShadow = 'none' }}
-          >
-            {loading === 'email' ? <><Spinner /> {mode === 'signin' ? 'Signing in…' : 'Creating account…'}</> : (mode === 'signin' ? 'Sign In' : 'Create Account')}
-          </button>
-        </form>
-
-        {/* Toggle sign in / sign up */}
-        <p style={{ margin: '20px 0 0', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-          {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}{' '}
-          <button
-            onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null); setSuccess(null) }}
-            style={{ background: 'none', border: 'none', color: 'var(--accent-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: 0 }}
-          >
-            {mode === 'signin' ? 'Create account' : 'Sign in'}
-          </button>
-        </p>
+        <Logo />
+        {mode === 'signin'
+          ? <LoginScreen  key="signin"  onSwitch={() => setMode('signup')} />
+          : <SignupScreen key="signup"  onSwitch={() => setMode('signin')} />
+        }
       </div>
     </div>
   )
