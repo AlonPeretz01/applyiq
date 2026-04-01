@@ -11,7 +11,7 @@ function parseClaudeJson(text) {
 // ─── generateTailoredCv ───────────────────────────────────────────────────────
 // Calls Claude to rewrite the CV tailored for the specific job.
 // Does NOT invent experience — only enhances and reorders existing content.
-export async function generateTailoredCv(cvPlainText, jobAnalysis, recommendation) {
+export async function generateTailoredCv(cvPlainText, jobAnalysis, recommendation, profile = null) {
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 4096,
@@ -35,7 +35,13 @@ ${JSON.stringify(jobAnalysis, null, 2)}
 
 Suggested Tweaks from AI:
 ${JSON.stringify(recommendation?.suggested_tweaks ?? [], null, 2)}
-
+${profile ? `
+Profile Hints (supplement CV content where missing — do NOT invent new roles or companies):
+- Bio/Summary: ${profile.summary || 'none'}
+- Profile Skills: ${(profile.skills || []).join(', ') || 'none'}
+- GitHub: ${profile.github_url || 'none'}
+- LinkedIn: ${profile.linkedin_url || 'none'}
+` : ''}
 Return a JSON object with EXACTLY this structure:
 {
   "name": "candidate full name",

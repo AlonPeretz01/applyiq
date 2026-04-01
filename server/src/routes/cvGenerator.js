@@ -10,10 +10,11 @@ router.post('/generate', async (req, res, next) => {
     if (!job_id || !cv_version_id) {
       return res.status(400).json({ data: null, error: 'job_id and cv_version_id are required', message: 'Missing required fields' })
     }
-    const [job, cvVersion, analysis] = await Promise.all([
+    const [job, cvVersion, analysis, profile] = await Promise.all([
       prisma.job.findUnique({ where: { id: job_id } }),
       prisma.cvVersion.findUnique({ where: { id: cv_version_id } }),
       prisma.aiAnalysis.findFirst({ where: { job_id, user_id: req.user.id }, orderBy: { created_at: 'desc' } }),
+      prisma.userProfile.findUnique({ where: { user_id: req.user.id } }),
     ])
     if (!job || job.user_id !== req.user.id) return res.status(404).json({ data: null, error: 'Job not found', message: 'Job not found' })
     if (!cvVersion || cvVersion.user_id !== req.user.id) return res.status(404).json({ data: null, error: 'CV version not found', message: 'CV version not found' })
@@ -24,7 +25,7 @@ router.post('/generate', async (req, res, next) => {
     const recommendation = { recommended_cv_id: analysis.recommended_cv_id, match_score: analysis.match_score, reason: analysis.reason, suggested_tweaks: analysis.suggested_tweaks }
 
     console.log('[cv-generator/generate] calling Claude for job:', job.title, '- cv:', cvVersion.name)
-    const cvData = await generateTailoredCv(cvVersion.plain_text, jobAnalysis, recommendation)
+    const cvData = await generateTailoredCv(cvVersion.plain_text, jobAnalysis, recommendation, profile)
     const html = renderCvHtml(cvData)
     res.json({ data: { html, cvData }, error: null, message: 'CV generated successfully' })
   } catch (err) { next(err) }

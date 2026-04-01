@@ -1,4 +1,22 @@
 import 'dotenv/config'
+
+// ─── Environment variable validation ─────────────────────────────────────────
+const requiredEnvVars = [
+  'DATABASE_URL',
+  'SUPABASE_URL',
+  'SUPABASE_ANON_KEY',
+  'ANTHROPIC_API_KEY',
+  'PORT',
+]
+
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`❌ Missing required environment variable: ${envVar}`)
+    process.exit(1)
+  }
+}
+console.log('✅ All environment variables validated')
+
 import express from 'express'
 import cors from 'cors'
 import path from 'path'
@@ -15,6 +33,7 @@ import profileRouter from './routes/profile.js'
 import { errorHandler, notFound } from './middleware/errorHandler.js'
 import { startKeepAlive } from './lib/keepAlive.js'
 import { requireAuth } from './middleware/auth.js'
+import { generalLimiter, aiLimiter, cvLimiter } from './middleware/rateLimiter.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -29,11 +48,17 @@ app.use(express.urlencoded({ extended: true }))
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))
 
-// ─── Routes ──────────────────────────────────────────────────────────────────
+// ─── Health check — exempt from rate limiting ─────────────────────────────────
 app.get('/api/health', (req, res) =>
   res.json({ data: { status: 'ok', timestamp: new Date().toISOString() }, error: null, message: 'Server is healthy' })
 )
 
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+app.use(generalLimiter)
+app.use('/api/ai',           aiLimiter)
+app.use('/api/cv-generator', cvLimiter)
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
 app.use('/api/jobs',          requireAuth, jobsRouter)
 app.use('/api/cv-versions',   requireAuth, cvVersionsRouter)
 app.use('/api/applications',  requireAuth, applicationsRouter)

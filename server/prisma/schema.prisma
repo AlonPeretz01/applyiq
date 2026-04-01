@@ -138,12 +138,22 @@ model StatusHistory {
 }
 
 model UserProfile {
-  id         String   @id @default(cuid())
-  user_id    String   @unique
-  full_name  String?
-  avatar_url String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id                String   @id @default(cuid())
+  user_id           String   @unique
+  full_name         String?
+  avatar_url        String?
+  headline          String?
+  location          String?
+  years_experience  Int?
+  target_role       String?
+  target_seniority  String?
+  skills            String[]
+  summary           String?  @db.Text
+  github_url        String?
+  linkedin_url      String?
+  portfolio_url     String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
   @@map("user_profiles")
 }
