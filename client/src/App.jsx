@@ -6,6 +6,7 @@ import Jobs from './pages/Jobs.jsx'
 import Applications from './pages/Applications.jsx'
 import CvVersions from './pages/CvVersions.jsx'
 import Profile from './pages/Profile.jsx'
+import Analytics from './pages/Analytics.jsx'
 import Login from './pages/Login.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import OnboardingModal from './components/OnboardingModal.jsx'
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/jobs"         element={<Jobs />}          />
           <Route path="/cv-versions"  element={<CvVersions />}   />
           <Route path="/applications" element={<Applications />}  />
+          <Route path="/analytics"    element={<Analytics />}    />
           <Route path="/profile"      element={<Profile />}       />
         </Route>
       </Routes>

@@ -40,12 +40,23 @@ function IconUser() {
     </svg>
   )
 }
+function IconBarChart() {
+  return (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <line strokeLinecap="round" strokeLinejoin="round" x1="18" y1="20" x2="18" y2="10" />
+      <line strokeLinecap="round" strokeLinejoin="round" x1="12" y1="20" x2="12" y2="4" />
+      <line strokeLinecap="round" strokeLinejoin="round" x1="6" y1="20" x2="6" y2="14" />
+      <line strokeLinecap="round" strokeLinejoin="round" x1="2" y1="20" x2="22" y2="20" />
+    </svg>
+  )
+}
 
 const NAV_ITEMS = [
   { to: '/',             label: 'Dashboard',    Icon: IconDashboard  },
   { to: '/jobs',         label: 'Jobs',         Icon: IconBriefcase  },
   { to: '/cv-versions',  label: 'CV Versions',  Icon: IconFile       },
   { to: '/applications', label: 'Applications', Icon: IconClipboard  },
+  { to: '/analytics',    label: 'Analytics',    Icon: IconBarChart   },
   { to: '/profile',      label: 'Profile',      Icon: IconUser       },
 ]
 

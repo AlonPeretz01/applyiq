@@ -30,6 +30,7 @@ import statusHistoryRouter from './routes/statusHistory.js'
 import aiRouter from './routes/ai.js'
 import cvGeneratorRouter from './routes/cvGenerator.js'
 import profileRouter from './routes/profile.js'
+import analyticsRouter from './routes/analytics.js'
 import { errorHandler, notFound } from './middleware/errorHandler.js'
 import { startKeepAlive } from './lib/keepAlive.js'
 import { requireAuth } from './middleware/auth.js'
@@ -67,6 +68,7 @@ app.use('/api/status-history',requireAuth, statusHistoryRouter)
 app.use('/api/ai',            requireAuth, aiRouter)
 app.use('/api/cv-generator',  requireAuth, cvGeneratorRouter)
 app.use('/api/profile',       requireAuth, profileRouter)
+app.use('/api/analytics',    requireAuth, analyticsRouter)
 
 // ─── Error handling ──────────────────────────────────────────────────────────
 app.use(notFound)
