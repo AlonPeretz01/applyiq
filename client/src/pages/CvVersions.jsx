@@ -338,7 +338,7 @@ export default function CvVersions() {
   }
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1200 }}>
+    <div className="page-wrapper">
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
@@ -374,7 +374,7 @@ export default function CvVersions() {
       ) : cvVersions.length === 0 ? (
         <EmptyState onAdd={openAdd} />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+        <div className="cv-grid">
           {cvVersions.map((cv) => (
             <CvCard key={cv.id} cv={cv} onEdit={() => openEdit(cv)} onDelete={() => askDelete(cv)} />
           ))}

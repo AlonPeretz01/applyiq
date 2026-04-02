@@ -178,8 +178,8 @@ export default function Applications() {
   function askDelete(app) { setConfirm({ open: true, target: app }) }
   function doDelete()     { if (confirmState.target) deleteApp.mutate(confirmState.target.id) }
 
-  const TH = ({ children, right }) => (
-    <th style={{
+  const TH = ({ children, right, className }) => (
+    <th className={className} style={{
       textAlign: right ? 'right' : 'left',
       padding: '10px 16px',
       fontSize: 11, fontWeight: 500,
@@ -193,7 +193,7 @@ export default function Applications() {
   )
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1200 }}>
+    <div className="page-wrapper">
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
@@ -231,15 +231,15 @@ export default function Applications() {
           <EmptyState />
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+            <table className="apps-table">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <TH>Company / Role</TH>
-                  <TH>CV Version</TH>
-                  <TH>Date Applied</TH>
+                  <TH className="col-hide-mobile">CV Version</TH>
+                  <TH className="col-hide-mobile">Date Applied</TH>
                   <TH>Status</TH>
                   <TH>Match</TH>
-                  <TH>Notes</TH>
+                  <TH className="col-hide-mobile">Notes</TH>
                   <TH right>Actions</TH>
                 </tr>
               </thead>
@@ -265,7 +265,7 @@ export default function Applications() {
                     </td>
 
                     {/* CV Version */}
-                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                    <td className="col-hide-mobile" style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                       <span style={{
                         fontSize: 12, color: 'var(--text-secondary)',
                         background: 'var(--bg-elevated)',
@@ -282,7 +282,7 @@ export default function Applications() {
                     </td>
 
                     {/* Date */}
-                    <td style={{ padding: '12px 16px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    <td className="col-hide-mobile" style={{ padding: '12px 16px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {formatDate(app.applied_at)}
                     </td>
 
@@ -297,7 +297,7 @@ export default function Applications() {
                     </td>
 
                     {/* Notes */}
-                    <td style={{ padding: '12px 16px', maxWidth: 180 }}>
+                    <td className="col-hide-mobile" style={{ padding: '12px 16px', maxWidth: 180 }}>
                       <span
                         title={app.notes || ''}
                         style={{

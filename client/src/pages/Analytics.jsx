@@ -132,14 +132,14 @@ function SkeletonBox({ height = 20, width = '100%', style }) {
 
 function LoadingSkeleton() {
   return (
-    <div style={{ padding: '32px 40px', maxWidth: 1200 }}>
+    <div className="page-wrapper">
       <SkeletonBox height={32} width={180} style={{ marginBottom: 8 }} />
       <SkeletonBox height={14} width={260} style={{ marginBottom: 28 }} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div className="stat-grid-4" style={{ marginBottom: 20 }}>
         {[0, 1, 2, 3].map(i => <SkeletonBox key={i} height={106} />)}
       </div>
       <SkeletonBox height={248} style={{ marginBottom: 20 }} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+      <div className="analytics-row3" style={{ marginBottom: 20 }}>
         <SkeletonBox height={300} />
         <SkeletonBox height={300} />
       </div>
@@ -201,7 +201,7 @@ export default function Analytics() {
 
   if (!data || data.total_applications === 0) {
     return (
-      <div style={{ padding: '32px 40px', maxWidth: 1200 }}>
+      <div className="page-wrapper">
         {pageHeader}
         <EmptyState />
       </div>
@@ -213,11 +213,11 @@ export default function Analytics() {
     .map(([name, value]) => ({ name, value }))
 
   return (
-    <div style={{ padding: '32px 40px', maxWidth: 1200 }}>
+    <div className="page-wrapper">
       {pageHeader}
 
       {/* ── Row 1: Stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div className="stat-grid-4" style={{ marginBottom: 20 }}>
         <StatCard
           label="Total Applications"
           value={data.total_applications}
@@ -292,7 +292,7 @@ export default function Analytics() {
       </SectionCard>
 
       {/* ── Row 3: Status pie + Top tech bar ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+      <div className="analytics-row3" style={{ marginBottom: 20 }}>
 
         {/* Donut — Application Status */}
         <SectionCard title="Application Status">

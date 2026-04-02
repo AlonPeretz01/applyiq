@@ -141,8 +141,8 @@ export default function Layout() {
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-base)', overflow: 'hidden' }}>
 
-      {/* ── Sidebar ── */}
-      <aside style={{
+      {/* ── Sidebar (desktop only) ── */}
+      <aside className="desktop-only" style={{
         width: 220,
         flexShrink: 0,
         background: 'linear-gradient(180deg, #16162A 0%, #13131F 100%)',
@@ -242,11 +242,62 @@ export default function Layout() {
       </aside>
 
       {/* ── Main Content ── */}
-      <main style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-base)' }}>
+      <main className="main-scroll" style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-base)' }}>
         <div className="anim-fade-in">
           <Outlet />
         </div>
       </main>
+
+      {/* ── Mobile Header (fixed top) ── */}
+      <header className="mobile-only" style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
+        height: 56, background: 'var(--bg-surface)',
+        borderBottom: '1px solid var(--border-subtle)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="28" height="28" viewBox="0 0 40 40" style={{ flexShrink: 0, boxShadow: '0 0 14px rgba(124,111,247,0.35)', borderRadius: 7 }}>
+            <rect width="40" height="40" rx="10" fill="#7C6FF7"/>
+            <line x1="6"  y1="10" x2="6"  y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="15" y1="10" x2="15" y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="6"  y1="20" x2="15" y2="20" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="20" y1="10" x2="34" y2="10" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="27" y1="10" x2="27" y2="30" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
+          </svg>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+            HireTrack
+          </span>
+        </div>
+        <Avatar name={user?.user_metadata?.full_name || user?.user_metadata?.name} email={user?.email} size={32} />
+      </header>
+
+      {/* ── Mobile Bottom Nav ── */}
+      <nav className="mobile-only" style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+        height: 60, background: 'var(--bg-surface)',
+        borderTop: '1px solid var(--border-subtle)',
+        display: 'flex', alignItems: 'center',
+      }}>
+        {NAV_ITEMS.map(({ to, label, Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            aria-label={label}
+            style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+          >
+            {({ isActive }) => (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <div className="bottom-nav-item" style={{ color: isActive ? '#7C6FF7' : 'var(--text-muted)' }}>
+                  <Icon />
+                </div>
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: isActive ? '#7C6FF7' : 'transparent' }} />
+              </div>
+            )}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   )
 }

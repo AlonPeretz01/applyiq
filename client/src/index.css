@@ -89,3 +89,75 @@
 .anim-slide-in-right { animation: slideInRight 0.3s ease both; }
 .anim-spin           { animation: spinRing     0.75s linear infinite; }
 .anim-pulse          { animation: pulseSoft    1.5s ease-in-out infinite; }
+
+/* ── Responsive utilities ───────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .desktop-only { display: none !important; }
+}
+@media (min-width: 768px) {
+  .mobile-only  { display: none !important; }
+}
+
+/* Page wrapper — responsive padding */
+.page-wrapper {
+  padding: 32px 36px;
+  max-width: 1200px;
+}
+@media (max-width: 767px) {
+  .page-wrapper {
+    padding: 16px 16px 80px;
+  }
+}
+
+/* Mobile top padding to clear the fixed header */
+@media (max-width: 767px) {
+  .main-scroll { padding-top: 56px; }
+}
+
+/* Bottom nav icon size */
+.bottom-nav-item svg { width: 22px; height: 22px; }
+
+/* 4-column stat grid → 2×2 on mobile */
+.stat-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 767px) {
+  .stat-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+/* 2-column CV card grid → 1-col on mobile */
+.cv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (max-width: 767px) {
+  .cv-grid { grid-template-columns: 1fr; gap: 12px; }
+}
+
+/* Analytics side-by-side row → stacked on mobile */
+.analytics-row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 767px) {
+  .analytics-row3 { grid-template-columns: 1fr; }
+}
+
+/* Hide table columns on mobile */
+@media (max-width: 767px) {
+  .col-hide-mobile { display: none; }
+}
+
+/* Applications table: enforce min-width on desktop, free on mobile */
+.apps-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+@media (max-width: 767px) {
+  .apps-table { min-width: unset; }
+}

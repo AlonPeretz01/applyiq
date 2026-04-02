@@ -581,7 +581,7 @@ export default function Jobs() {
   }
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1200 }}>
+    <div className="page-wrapper">
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
@@ -624,11 +624,11 @@ export default function Jobs() {
                 {[
                   { label: 'Company', w: '22%' },
                   { label: 'Role',    w: '28%' },
-                  { label: 'Source',  w: '14%' },
-                  { label: 'Added',   w: '14%' },
+                  { label: 'Source',  w: '14%', hideMobile: true },
+                  { label: 'Added',   w: '14%', hideMobile: true },
                   { label: 'Actions', w: '22%', right: true },
-                ].map(({ label, w, right }) => (
-                  <th key={label} style={{
+                ].map(({ label, w, right, hideMobile }) => (
+                  <th key={label} className={hideMobile ? 'col-hide-mobile' : undefined} style={{
                     width: w,
                     textAlign: right ? 'right' : 'left',
                     padding: '10px 16px',
@@ -663,7 +663,7 @@ export default function Jobs() {
                     <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
                       {job.title}
                     </td>
-                    <td style={{ padding: '13px 16px' }}>
+                    <td className="col-hide-mobile" style={{ padding: '13px 16px' }}>
                       {job.source ? (
                         <span style={{
                           fontSize: 11, color: 'var(--text-secondary)',
@@ -677,7 +677,7 @@ export default function Jobs() {
                         <span style={{ color: 'var(--text-muted)' }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '13px 16px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)' }}>
+                    <td className="col-hide-mobile" style={{ padding: '13px 16px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)' }}>
                       {formatDate(job.created_at)}
                     </td>
                     <td style={{ padding: '13px 16px', textAlign: 'right' }}>

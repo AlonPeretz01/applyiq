@@ -1,6 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+
+function useIsMobile() {
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
+  useEffect(() => {
+    const fn = () => setM(window.innerWidth < 768)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return m
+}
 
 export default function Modal({ isOpen, onClose, title, children, maxWidth = 560 }) {
+  const isMobile = useIsMobile()
   useEffect(() => {
     if (!isOpen) return
     const handler = (e) => { if (e.key === 'Escape') onClose() }
@@ -25,15 +36,16 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
 
       {/* Panel */}
       <div
-        className="anim-slide-up relative z-10 w-full mx-4"
+        className={`anim-slide-up relative z-10 w-full${isMobile ? '' : ' mx-4'}`}
         style={{
-          maxWidth,
-          maxHeight: '90vh',
+          maxWidth: isMobile ? '100%' : maxWidth,
+          maxHeight: isMobile ? '100%' : '90vh',
+          height: isMobile ? '100%' : undefined,
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--bg-surface)',
           border: '1px solid var(--border-default)',
-          borderRadius: 16,
+          borderRadius: isMobile ? 0 : 16,
           boxShadow: '0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,111,247,0.06)',
           overflow: 'hidden',
         }}

@@ -189,7 +189,7 @@ export default function Dashboard() {
   const recent     = apps.slice(0, 10)
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1200 }}>
+    <div className="page-wrapper">
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
@@ -205,7 +205,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 28 }}>
+      <div className="stat-grid-4" style={{ marginBottom: 28 }}>
         <StatCard label="Total Applications" value={total}      accent="purple" />
         <StatCard label="In Progress"         value={inProgress} accent="blue"   />
         <StatCard label="Interviews"          value={interviews} accent="violet" />
@@ -251,8 +251,14 @@ export default function Dashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                {['Company', 'Role', 'Status', 'Match', 'Date Applied'].map((h) => (
-                  <th key={h} style={{
+                {[
+                  { label: 'Company' },
+                  { label: 'Role',         hideMobile: true },
+                  { label: 'Status' },
+                  { label: 'Match' },
+                  { label: 'Date Applied', hideMobile: true },
+                ].map(({ label, hideMobile }) => (
+                  <th key={label} className={hideMobile ? 'col-hide-mobile' : undefined} style={{
                     textAlign: 'left',
                     padding: '10px 20px',
                     fontSize: 11,
@@ -262,7 +268,7 @@ export default function Dashboard() {
                     letterSpacing: '0.08em',
                     whiteSpace: 'nowrap',
                   }}>
-                    {h}
+                    {label}
                   </th>
                 ))}
               </tr>
@@ -288,7 +294,7 @@ export default function Dashboard() {
                     </div>
                   </td>
                   {/* Role */}
-                  <td style={{ padding: '11px 20px', fontSize: 13, color: '#6666AA', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td className="col-hide-mobile" style={{ padding: '11px 20px', fontSize: 13, color: '#6666AA', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {app.job?.title ?? '—'}
                   </td>
                   <td style={{ padding: '11px 20px' }}>
@@ -297,7 +303,7 @@ export default function Dashboard() {
                   <td style={{ padding: '11px 20px' }}>
                     <ScoreCell score={app.match_score} />
                   </td>
-                  <td style={{ padding: '11px 20px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)' }}>
+                  <td className="col-hide-mobile" style={{ padding: '11px 20px', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)' }}>
                     {formatDate(app.applied_at)}
                   </td>
                 </tr>
