@@ -21,9 +21,20 @@ export async function generateTailoredCv(cvPlainText, jobAnalysis, recommendatio
         role: 'user',
         content: `Tailor this candidate's CV for the specific job below.
 
-RULES:
-- ENHANCE by highlighting relevant skills, reordering bullets by relevance, adding job keywords
-- Do NOT invent experience, roles, or skills that don't exist in the original CV
+CRITICAL RULES — YOU MUST FOLLOW THESE EXACTLY:
+1. NEVER remove any job position or work experience — keep ALL of them
+2. NEVER remove any project — keep ALL projects listed
+3. NEVER remove volunteer work, teaching experience, or extracurricular activities
+4. NEVER invent or add experience that doesn't exist in the original CV
+5. For seemingly unrelated jobs (e.g. English teacher, tutor), KEEP them but reframe the bullets to emphasize transferable skills (communication, leadership, mentoring, attention to detail)
+6. ONLY reorder bullet points within each section by relevance to the job
+7. ONLY enhance wording to better highlight relevant skills
+8. The output must contain AT LEAST the same number of jobs, projects, and experiences as the input
+9. If in doubt — KEEP IT, never remove
+
+The candidate has provided their full CV. Your job is to ENHANCE and REFRAME, not to filter or remove. Every single item in the original CV must appear in the output.
+
+ADDITIONAL RULES:
 - Extract real contact info (name, email, phone, location, GitHub, LinkedIn) from the CV text
 - Write a new tailored summary (2-3 sentences) focused on this job's requirements
 

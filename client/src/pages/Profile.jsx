@@ -474,7 +474,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="profile-page-root" style={{ padding: '32px 36px', maxWidth: 1060, overflowX: 'hidden', boxSizing: 'border-box' }}>
+    <div className="profile-page-root">
 
       {/* Page header */}
       <div style={{ marginBottom: 28 }}>
@@ -487,10 +487,10 @@ export default function Profile() {
       </div>
 
       <form onSubmit={handleSave}>
-        <div className="profile-layout" style={{ display: 'grid', gridTemplateColumns: '252px 1fr', gap: 18, alignItems: 'start' }}>
+        <div className="profile-layout">
 
           {/* ─── Left column ─── */}
-          <div>
+          <div className="profile-layout-left">
             <AvatarCard user={user} profile={form} />
             <StatsCard totalApps={totalApps} interviews={interviews} totalCvs={totalCvs} />
 
@@ -511,7 +511,7 @@ export default function Profile() {
           </div>
 
           {/* ─── Right column ─── */}
-          <div>
+          <div className="profile-layout-right">
 
             {/* Section 1 — Basic Info */}
             <div style={SECTION_CARD}>

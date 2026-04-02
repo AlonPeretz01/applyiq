@@ -301,27 +301,6 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
           </div>
         )}
 
-        {/* Match Tips */}
-        {analysis?.match_tips?.length > 0 && (
-          <div>
-            <SectionLabel>Match Tips</SectionLabel>
-            <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {analysis.match_tips.map((tip, i) => (
-                <li key={i} style={{
-                  display: 'flex', gap: 10, padding: '8px 12px',
-                  background: 'var(--bg-input)', borderRadius: 6,
-                  borderLeft: '2px solid var(--accent-primary)',
-                }}>
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1 }}>
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{tip}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-
         {/* Divider */}
         <div style={{ borderTop: '1px solid var(--border-subtle)' }} />
 
@@ -393,20 +372,6 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
               </div>
             </div>
 
-            {/* Suggested tweaks */}
-            {recommendation.suggested_tweaks?.length > 0 && (
-              <div>
-                <SectionLabel>Suggested Tweaks</SectionLabel>
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {recommendation.suggested_tweaks.map((tweak, i) => (
-                    <li key={i} style={{ display: 'flex', gap: 8, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                      <span style={{ color: 'var(--success)', flexShrink: 0, marginTop: 2 }}>›</span>
-                      <span>{tweak}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         ) : (
           <div style={{
@@ -455,6 +420,34 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
             Application created!
           </div>
         )}
+
+        {/* How to improve your chances — merged match_tips + suggested_tweaks, deduped */}
+        {(() => {
+          const tips = [...(analysis?.match_tips ?? []), ...(recommendation?.suggested_tweaks ?? [])]
+          const unique = tips.filter((tip, i, arr) =>
+            arr.findIndex(t => t.toLowerCase() === tip.toLowerCase()) === i
+          )
+          if (!unique.length) return null
+          return (
+            <div>
+              <SectionLabel>How to improve your chances</SectionLabel>
+              <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {unique.map((tip, i) => (
+                  <li key={i} style={{
+                    display: 'flex', gap: 10, padding: '8px 12px',
+                    background: 'var(--bg-input)', borderRadius: 6,
+                    borderLeft: '2px solid var(--accent-primary)',
+                  }}>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--accent-primary)', flexShrink: 0, marginTop: 1 }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{tip}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )
+        })()}
       </div>
     </Modal>
   )
@@ -673,8 +666,110 @@ export default function Jobs() {
         </button>
       </div>
 
-      {/* Table */}
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+      {/* ── Mobile card list ── */}
+      <div className="jobs-card-list">
+        {isLoading ? (
+          <LoadingState />
+        ) : jobs.length === 0 ? (
+          <EmptyState onAdd={openAdd} />
+        ) : jobs.map((job) => {
+          const hasSaved    = !!savedAnalysesMap[job.id]
+          const isAnalyzing = analyzingId === job.id
+          const isReanalyzing = reanalyzingId === job.id
+          return (
+            <div key={job.id} style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 10, padding: '14px 16px',
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                {job.company_name}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                {job.title}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {hasSaved ? (
+                  <>
+                    <button
+                      onClick={() => handleViewSaved(job)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '7px 12px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+                        background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                        color: 'var(--text-secondary)', cursor: 'pointer',
+                      }}
+                    >
+                      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      View Analysis
+                    </button>
+                    <button
+                      onClick={() => handleReanalyze(job)}
+                      disabled={isReanalyzing}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '7px 12px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+                        background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                        color: 'var(--text-muted)', cursor: isReanalyzing ? 'default' : 'pointer',
+                        opacity: isReanalyzing ? 0.6 : 1,
+                      }}
+                    >
+                      {isReanalyzing ? <Spinner size={12} /> : (
+                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                      )}
+                      Re-analyze
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => handleAnalyze(job)}
+                    disabled={isAnalyzing}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '7px 12px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+                      background: isAnalyzing ? 'var(--accent-glow)' : 'var(--bg-elevated)',
+                      border: `1px solid ${isAnalyzing ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
+                      color: isAnalyzing ? 'var(--accent-secondary)' : 'var(--text-secondary)',
+                      cursor: isAnalyzing ? 'default' : 'pointer',
+                    }}
+                  >
+                    {isAnalyzing ? <><Spinner size={12} /> Analyzing…</> : (
+                      <>
+                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                        </svg>
+                        Analyze
+                      </>
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={() => askDelete(job)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '7px 12px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-muted)', cursor: 'pointer',
+                  }}
+                >
+                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                  Delete
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Desktop table ── */}
+      <div className="jobs-table-wrap" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
         {isLoading ? (
           <LoadingState />
         ) : jobs.length === 0 ? (

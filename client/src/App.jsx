@@ -1,16 +1,30 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
-import Dashboard from './pages/Dashboard.jsx'
-import Jobs from './pages/Jobs.jsx'
-import Applications from './pages/Applications.jsx'
-import CvVersions from './pages/CvVersions.jsx'
-import Profile from './pages/Profile.jsx'
-import Analytics from './pages/Analytics.jsx'
 import Login from './pages/Login.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import OnboardingModal from './components/OnboardingModal.jsx'
 import { useAuth } from './context/AuthContext.jsx'
+
+const Dashboard    = lazy(() => import('./pages/Dashboard.jsx'))
+const Jobs         = lazy(() => import('./pages/Jobs.jsx'))
+const Applications = lazy(() => import('./pages/Applications.jsx'))
+const CvVersions   = lazy(() => import('./pages/CvVersions.jsx'))
+const Analytics    = lazy(() => import('./pages/Analytics.jsx'))
+const Profile      = lazy(() => import('./pages/Profile.jsx'))
+
+function PageSpinner() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 300 }}>
+      <div style={{
+        width: 28, height: 28, borderRadius: '50%',
+        border: '3px solid var(--border-subtle)',
+        borderTopColor: 'var(--accent-primary)',
+        animation: 'spinRing 0.75s linear infinite',
+      }} />
+    </div>
+  )
+}
 
 const ONBOARDING_KEY = 'applyiq_onboarding_complete'
 
@@ -35,12 +49,12 @@ export default function App() {
 
         {/* Protected — all wrapped in Layout */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route path="/"             element={<Dashboard />}    />
-          <Route path="/jobs"         element={<Jobs />}          />
-          <Route path="/cv-versions"  element={<CvVersions />}   />
-          <Route path="/applications" element={<Applications />}  />
-          <Route path="/analytics"    element={<Analytics />}    />
-          <Route path="/profile"      element={<Profile />}       />
+          <Route path="/"             element={<Suspense fallback={<PageSpinner />}><Dashboard /></Suspense>}    />
+          <Route path="/jobs"         element={<Suspense fallback={<PageSpinner />}><Jobs /></Suspense>}          />
+          <Route path="/cv-versions"  element={<Suspense fallback={<PageSpinner />}><CvVersions /></Suspense>}   />
+          <Route path="/applications" element={<Suspense fallback={<PageSpinner />}><Applications /></Suspense>}  />
+          <Route path="/analytics"    element={<Suspense fallback={<PageSpinner />}><Analytics /></Suspense>}    />
+          <Route path="/profile"      element={<Suspense fallback={<PageSpinner />}><Profile /></Suspense>}       />
         </Route>
       </Routes>
 

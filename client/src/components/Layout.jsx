@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -124,6 +125,110 @@ function Avatar({ name, email, size = 28 }) {
   )
 }
 
+// ─── Sidebar (memoised — only re-renders when user/displayName/signOut change) ─
+const Sidebar = memo(function Sidebar({ user, displayName, onSignOut, onNavigate }) {
+  return (
+    <aside className="desktop-only" style={{
+      width: 220,
+      flexShrink: 0,
+      background: 'linear-gradient(180deg, #16162A 0%, #13131F 100%)',
+      borderRight: '1px solid var(--border-subtle)',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+    }}>
+      {/* Purple top accent bar */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0,
+        width: 60, height: 2,
+        background: '#7C6FF7',
+        borderRadius: '0 0 2px 0',
+      }} />
+
+      {/* Logo */}
+      <div style={{
+        height: 56,
+        padding: '0 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        borderBottom: '1px solid var(--border-subtle)',
+        flexShrink: 0,
+      }}>
+        <svg width="28" height="28" viewBox="0 0 40 40" style={{ flexShrink: 0, boxShadow: '0 0 18px rgba(124,111,247,0.4)', borderRadius: 7 }}>
+          <rect width="40" height="40" rx="10" fill="#7C6FF7"/>
+          <line x1="6"  y1="10" x2="6"  y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+          <line x1="15" y1="10" x2="15" y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+          <line x1="6"  y1="20" x2="15" y2="20" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+          <line x1="20" y1="10" x2="34" y2="10" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
+          <line x1="27" y1="10" x2="27" y2="30" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
+        </svg>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em', lineHeight: 1.2, display: 'block' }}>
+            HireTrack
+          </span>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>Track. Apply. Succeed.</div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {NAV_ITEMS.map(({ to, label, Icon }) => (
+          <NavItem key={to} to={to} label={label} Icon={Icon} />
+        ))}
+      </nav>
+
+      {/* User section */}
+      <div style={{
+        borderTop: '1px solid var(--border-subtle)',
+        padding: '12px 12px 10px',
+        display: 'flex', flexDirection: 'column', gap: 8,
+        flexShrink: 0,
+      }}>
+        <div
+          onClick={() => onNavigate('/profile')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 9,
+            padding: '6px 8px', borderRadius: 8,
+            cursor: 'pointer', transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+        >
+          <Avatar name={user?.user_metadata?.full_name || user?.user_metadata?.name} email={user?.email} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {displayName}
+            </p>
+            <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user?.email}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={onSignOut}
+          style={{
+            width: '100%', padding: '6px 0', borderRadius: 7,
+            background: 'transparent', border: '1px solid var(--border-subtle)',
+            fontSize: 11, fontWeight: 500, color: 'var(--text-muted)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-bg)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
+        >
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+          </svg>
+          Sign out
+        </button>
+      </div>
+    </aside>
+  )
+})
+
 export default function Layout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
@@ -141,105 +246,7 @@ export default function Layout() {
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-base)', overflow: 'hidden' }}>
 
-      {/* ── Sidebar (desktop only) ── */}
-      <aside className="desktop-only" style={{
-        width: 220,
-        flexShrink: 0,
-        background: 'linear-gradient(180deg, #16162A 0%, #13131F 100%)',
-        borderRight: '1px solid var(--border-subtle)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-      }}>
-        {/* Purple top accent bar */}
-        <div style={{
-          position: 'absolute',
-          top: 0, left: 0,
-          width: 60, height: 2,
-          background: '#7C6FF7',
-          borderRadius: '0 0 2px 0',
-        }} />
-
-        {/* Logo */}
-        <div style={{
-          height: 56,
-          padding: '0 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          borderBottom: '1px solid var(--border-subtle)',
-          flexShrink: 0,
-        }}>
-          <svg width="28" height="28" viewBox="0 0 40 40" style={{ flexShrink: 0, boxShadow: '0 0 18px rgba(124,111,247,0.4)', borderRadius: 7 }}>
-            <rect width="40" height="40" rx="10" fill="#7C6FF7"/>
-            <line x1="6"  y1="10" x2="6"  y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-            <line x1="15" y1="10" x2="15" y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-            <line x1="6"  y1="20" x2="15" y2="20" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-            <line x1="20" y1="10" x2="34" y2="10" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
-            <line x1="27" y1="10" x2="27" y2="30" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
-          </svg>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em', lineHeight: 1.2, display: 'block' }}>
-              HireTrack
-            </span>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>Track. Apply. Succeed.</div>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {NAV_ITEMS.map(({ to, label, Icon }) => (
-            <NavItem key={to} to={to} label={label} Icon={Icon} />
-          ))}
-        </nav>
-
-        {/* User section */}
-        <div style={{
-          borderTop: '1px solid var(--border-subtle)',
-          padding: '12px 12px 10px',
-          display: 'flex', flexDirection: 'column', gap: 8,
-          flexShrink: 0,
-        }}>
-          <div
-            onClick={() => navigate('/profile')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 9,
-              padding: '6px 8px', borderRadius: 8,
-              cursor: 'pointer', transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-          >
-            <Avatar name={user?.user_metadata?.full_name || user?.user_metadata?.name} email={user?.email} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {displayName}
-              </p>
-              <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user?.email}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSignOut}
-            style={{
-              width: '100%', padding: '6px 0', borderRadius: 7,
-              background: 'transparent', border: '1px solid var(--border-subtle)',
-              fontSize: 11, fontWeight: 500, color: 'var(--text-muted)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-bg)' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
-          >
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-            </svg>
-            Sign out
-          </button>
-        </div>
-      </aside>
+      <Sidebar user={user} displayName={displayName} onSignOut={handleSignOut} onNavigate={navigate} />
 
       {/* ── Main Content ── */}
       <main className="main-scroll" style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-base)' }}>
