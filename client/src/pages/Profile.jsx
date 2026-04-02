@@ -474,7 +474,7 @@ export default function Profile() {
   }
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 1060 }}>
+    <div className="profile-page-root" style={{ padding: '32px 36px', maxWidth: 1060, overflowX: 'hidden', boxSizing: 'border-box' }}>
 
       {/* Page header */}
       <div style={{ marginBottom: 28 }}>
@@ -487,7 +487,7 @@ export default function Profile() {
       </div>
 
       <form onSubmit={handleSave}>
-        <div style={{ display: 'grid', gridTemplateColumns: '252px 1fr', gap: 18, alignItems: 'start' }}>
+        <div className="profile-layout" style={{ display: 'grid', gridTemplateColumns: '252px 1fr', gap: 18, alignItems: 'start' }}>
 
           {/* ─── Left column ─── */}
           <div>

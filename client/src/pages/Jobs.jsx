@@ -181,6 +181,45 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
     <Modal isOpen={isOpen} onClose={onClose} title={`AI Analysis — ${job.company_name}`} maxWidth={600}>
       <div style={{ maxHeight: '68vh', overflowY: 'auto', marginRight: -8, paddingRight: 8, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+        {/* CVs being analyzed */}
+        {cvVersions.length > 0 && (
+          <div style={{
+            padding: '10px 14px',
+            background: 'var(--bg-input)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 8,
+          }}>
+            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              CVs being analyzed
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {cvVersions.map(cv => (
+                <span key={cv.id} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '3px 8px', borderRadius: 20,
+                  fontSize: 11, fontWeight: 500,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--text-secondary)',
+                }}>
+                  {cv.name}
+                  <span style={{
+                    fontSize: 10, padding: '1px 5px', borderRadius: 10,
+                    background: 'rgba(124,111,247,0.12)',
+                    color: 'var(--accent-secondary)',
+                    border: '1px solid rgba(124,111,247,0.2)',
+                  }}>
+                    {cv.target_type}
+                  </span>
+                </span>
+              ))}
+            </div>
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Claude will compare all your CV versions and recommend the best one for this role.
+            </p>
+          </div>
+        )}
+
         {/* Saved analysis banner */}
         {savedAt && (
           <div style={{
@@ -294,8 +333,8 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
             {/* Recommendation card */}
             <div style={{
               padding: '16px 18px',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-subtle)',
+              background: 'rgba(34,197,94,0.05)',
+              border: '1px solid rgba(34,197,94,0.25)',
               borderLeft: '3px solid var(--success)',
               borderRadius: 10,
               display: 'flex', alignItems: 'flex-start', gap: 16,
@@ -309,22 +348,41 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 {recCv && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                      background: 'var(--accent-glow)',
-                      border: '1px solid rgba(124,111,247,0.2)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} style={{ color: 'var(--accent-secondary)' }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                      </svg>
+                  <>
+                    <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 600, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Recommended
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                        background: 'rgba(34,197,94,0.1)',
+                        border: '1px solid rgba(34,197,94,0.2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} style={{ color: 'var(--success)' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--success)' }}>
+                          {recCv.name}
+                          <span style={{
+                            marginLeft: 7, fontSize: 10, fontWeight: 500, padding: '2px 7px',
+                            borderRadius: 10, background: 'rgba(34,197,94,0.12)',
+                            border: '1px solid rgba(34,197,94,0.25)', color: 'var(--success)',
+                            verticalAlign: 'middle',
+                          }}>
+                            {recCv.target_type}
+                          </span>
+                        </p>
+                        {cvVersions.length > 1 && (
+                          <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                            vs {cvVersions.length - 1} other CV version{cvVersions.length - 1 !== 1 ? 's' : ''} analyzed
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{recCv.name}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>{recCv.target_type}</p>
-                    </div>
-                  </div>
+                  </>
                 )}
 
                 {recommendation.reason && (
@@ -542,6 +600,10 @@ export default function Jobs() {
 
   // Runs a fresh AI call — used when no saved analysis exists.
   async function handleAnalyze(job) {
+    if (!cvVersions || cvVersions.length === 0) {
+      toast.error('Please add a CV version first before analyzing a job. Go to CV Versions to add one.')
+      return
+    }
     setAnalyzingId(job.id)
     try {
       const data = await aiAnalysis.mutateAsync(job.id)
@@ -726,6 +788,7 @@ export default function Jobs() {
                           <button
                             onClick={() => handleAnalyze(job)}
                             disabled={isAnalyzing}
+                            title={cvVersions.length === 0 ? 'Add a CV version first' : 'Run AI analysis'}
                             style={{
                               display: 'flex', alignItems: 'center', gap: 5,
                               padding: '5px 10px', borderRadius: 7,

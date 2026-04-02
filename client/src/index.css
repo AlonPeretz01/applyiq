@@ -151,6 +151,23 @@
   .analytics-row3 { grid-template-columns: 1fr; }
 }
 
+/* Profile page mobile padding */
+@media (max-width: 767px) {
+  .profile-page-root {
+    padding: 16px 16px 80px !important;
+  }
+}
+
+/* Profile two-column → single column on mobile */
+.profile-layout {
+  grid-template-columns: 252px 1fr;
+}
+@media (max-width: 767px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Hide table columns on mobile */
 @media (max-width: 767px) {
   .col-hide-mobile { display: none; }
