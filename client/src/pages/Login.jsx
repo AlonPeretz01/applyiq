@@ -156,18 +156,22 @@ function SubmitButton({ loading, loadingKey, label, loadingLabel }) {
 function Logo() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 30 }}>
-      <div style={{
-        width: 46, height: 46, borderRadius: 13,
-        background: 'linear-gradient(135deg, #7C6FF7, #A78BFA)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: '0 0 28px rgba(124,111,247,0.45)', marginBottom: 14,
-      }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" />
-        </svg>
-      </div>
-      <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-        ApplyIQ
+      <svg
+        width="56" height="56" viewBox="0 0 40 40"
+        style={{ marginBottom: 14, filter: 'drop-shadow(0 0 18px rgba(124,111,247,0.5))', borderRadius: 10 }}
+      >
+        <rect width="40" height="40" rx="10" fill="#7C6FF7"/>
+        <line x1="6"  y1="10" x2="6"  y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="15" y1="10" x2="15" y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="6"  y1="20" x2="15" y2="20" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="20" y1="10" x2="34" y2="10" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="27" y1="10" x2="27" y2="30" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
+      </svg>
+      <span style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
+        HireTrack
+      </span>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>
+        Track. Apply. Succeed.
       </span>
     </div>
   )
@@ -223,7 +227,7 @@ function LoginScreen({ onSwitch }) {
           Welcome back
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
-          Sign in to your ApplyIQ account
+          Sign in to your HireTrack account
         </p>
       </div>
 

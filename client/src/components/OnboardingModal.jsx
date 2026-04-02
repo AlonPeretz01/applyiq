@@ -50,7 +50,7 @@ function SlideWelcome() {
   return (
     <div style={{ textAlign: 'center', padding: '16px 0 8px' }}>
       <div style={{ fontSize: 60, lineHeight: 1, marginBottom: 22 }}>🚀</div>
-      <h2 style={{ ...H2, fontSize: 26, marginBottom: 14 }}>Welcome to ApplyIQ</h2>
+      <h2 style={{ ...H2, fontSize: 26, marginBottom: 14 }}>Welcome to HireTrack</h2>
       <p style={{ ...SUB, fontSize: 15, maxWidth: 360, marginInline: 'auto' }}>
         Your AI-powered job application tracker. Let&apos;s show you how it works.
       </p>

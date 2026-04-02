@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <!-- Transparent background — for use on dark surfaces -->
+  <!-- H — #7C6FF7, stroke-based -->
+  <line x1="8"  y1="10" x2="8"  y2="30" stroke="#7C6FF7" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="17" y1="10" x2="17" y2="30" stroke="#7C6FF7" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="8"  y1="20" x2="17" y2="20" stroke="#7C6FF7" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- T — #A78BFA, shares (17,10) with H's right vertical top -->
+  <line x1="17" y1="10" x2="33" y2="10" stroke="#A78BFA" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="25" y1="10" x2="25" y2="30" stroke="#A78BFA" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

@@ -1,7 +1,7 @@
 {
   "name": "applyiq-server",
   "version": "1.0.0",
-  "description": "ApplyIQ backend API",
+  "description": "HireTrack backend API",
   "main": "src/index.js",
   "type": "module",
   "scripts": {

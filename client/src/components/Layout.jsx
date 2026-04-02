@@ -170,30 +170,19 @@ export default function Layout() {
           borderBottom: '1px solid var(--border-subtle)',
           flexShrink: 0,
         }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: '#7C6FF7',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-            boxShadow: '0 0 20px rgba(124,111,247,0.45)',
-          }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white" />
-            </svg>
-          </div>
+          <svg width="28" height="28" viewBox="0 0 40 40" style={{ flexShrink: 0, boxShadow: '0 0 18px rgba(124,111,247,0.4)', borderRadius: 7 }}>
+            <rect width="40" height="40" rx="10" fill="#7C6FF7"/>
+            <line x1="6"  y1="10" x2="6"  y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="15" y1="10" x2="15" y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="6"  y1="20" x2="15" y2="20" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="20" y1="10" x2="34" y2="10" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="27" y1="10" x2="27" y2="30" stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"/>
+          </svg>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
-                ApplyIQ
-              </span>
-              <span style={{
-                width: 6, height: 6, borderRadius: '50%',
-                background: '#7C6FF7',
-                boxShadow: '0 0 6px #7C6FF7, 0 0 12px rgba(124,111,247,0.5)',
-                flexShrink: 0,
-              }} />
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>Job Tracker</div>
+            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em', lineHeight: 1.2, display: 'block' }}>
+              HireTrack
+            </span>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>Track. Apply. Succeed.</div>
           </div>
         </div>
 

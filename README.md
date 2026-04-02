@@ -1,4 +1,4 @@
-# ApplyIQ — Job Application Tracker
+# HireTrack — Job Application Tracker
 
 Full-stack job application tracker built with React, Vite, Express, Prisma, and Supabase.
 

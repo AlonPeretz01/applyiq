@@ -85,6 +85,6 @@ process.on('uncaughtException', (err) => {
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`[server] ApplyIQ API running on http://localhost:${PORT}`)
+  console.log(`[server] HireTrack API running on http://localhost:${PORT}`)
   startKeepAlive()
 })

@@ -1,8 +1,8 @@
-# ApplyIQ — Claude Code Context
+# HireTrack — Claude Code Context
 
 ## Project Overview
 
-ApplyIQ is a full-stack job application tracker that helps users manage their job search from start to finish. Users add job listings, attach CV versions and cover letters, track application status through a pipeline (DRAFT → APPLIED → INTERVIEW → OFFER), and use Claude AI to analyze job descriptions, get CV match scores, and generate tailored PDF CVs. Every user's data is fully isolated via Supabase Auth.
+HireTrack is a full-stack job application tracker that helps users manage their job search from start to finish. Users add job listings, attach CV versions and cover letters, track application status through a pipeline (DRAFT → APPLIED → INTERVIEW → OFFER), and use Claude AI to analyze job descriptions, get CV match scores, and generate tailored PDF CVs. Every user's data is fully isolated via Supabase Auth.
 
 ---
 

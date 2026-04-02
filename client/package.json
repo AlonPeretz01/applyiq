@@ -1,7 +1,7 @@
 {
   "name": "applyiq-client",
   "version": "1.0.0",
-  "description": "ApplyIQ frontend",
+  "description": "HireTrack frontend",
   "private": true,
   "type": "module",
   "scripts": {
