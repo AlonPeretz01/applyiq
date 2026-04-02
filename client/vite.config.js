@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // server.proxy is dev-only — ignored in production builds
   server: {
     port: 5173,
     proxy: {
