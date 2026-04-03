@@ -6,6 +6,12 @@ import { extractTextFromFile } from '../services/fileParserService.js'
 
 const router = Router()
 
+// ─── Debug middleware ─────────────────────────────────────────────────────────
+router.use((req, res, next) => {
+  console.log(`[cvVersions] ${req.method} ${req.path} | Content-Type: ${req.headers['content-type']}`)
+  next()
+})
+
 const VALID_TARGET_TYPES = ['FULLSTACK', 'BACKEND', 'DATA', 'STUDENT']
 const ACCEPTED_MIMETYPES = [
   'application/pdf',
@@ -51,6 +57,8 @@ router.get('/:id', async (req, res, next) => {
 // Accepts multipart/form-data (with optional cv_file) OR application/json
 router.post('/', upload.single('cv_file'), async (req, res, next) => {
   try {
+    console.log('[cv-versions/post] req.body:', req.body)
+    console.log('[cv-versions/post] req.file:', req.file ? `${req.file.originalname} (${req.file.mimetype}, ${req.file.size} bytes)` : 'undefined — no file received')
     const { name, target_type, plain_text } = req.body
     if (!name?.trim()) {
       return res.status(400).json({ data: null, error: 'name is required', message: 'name is required' })
@@ -70,41 +78,49 @@ router.post('/', upload.single('cv_file'), async (req, res, next) => {
     let fileUrl = null
 
     if (req.file) {
-      // Extract text from uploaded file
+      console.log('[cv-versions/post] file received:', req.file.originalname, req.file.mimetype, req.file.size, 'bytes')
+
+      // 1. Extract text (non-fatal — file still saved if this fails)
       try {
-        finalPlainText = await extractTextFromFile(req.file.buffer, req.file.mimetype)
+        const extracted = await extractTextFromFile(req.file.buffer, req.file.mimetype)
+        console.log('[cv-versions/post] extracted text length:', extracted?.length)
+        console.log('[cv-versions/post] extracted text preview:', extracted?.slice(0, 200))
+        if (extracted) finalPlainText = extracted
       } catch (parseErr) {
-        console.warn('[cv-versions/post] text extraction failed:', parseErr.message)
-        // Proceed without text — don't block CV creation
+        console.error('[cv-versions/post] text extraction FAILED:', parseErr.message, parseErr.stack)
       }
 
-      // Upload original file to Supabase Storage
+      // 2. Upload original file to Supabase Storage (non-fatal)
       const ext = req.file.mimetype === 'application/pdf' ? 'pdf' : 'docx'
       const fileName = `cv_${req.user.id}_${Date.now()}.${ext}`
+      console.log('[cv-versions/post] uploading to Supabase Storage as:', fileName)
       try {
-        const { error: uploadError } = await supabaseAdmin.storage
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
           .from('cv-files')
           .upload(fileName, req.file.buffer, { contentType: req.file.mimetype })
+        console.log('[cv-versions/post] Supabase upload — data:', uploadData, '| error:', uploadError)
         if (uploadError) {
-          console.warn('[cv-versions/post] storage upload failed:', uploadError.message)
+          console.error('[cv-versions/post] storage upload failed:', uploadError.message)
         } else {
           const { data: urlData } = supabaseAdmin.storage.from('cv-files').getPublicUrl(fileName)
           fileUrl = urlData.publicUrl
+          console.log('[cv-versions/post] public URL:', fileUrl)
         }
       } catch (storageErr) {
-        console.warn('[cv-versions/post] storage error (non-fatal):', storageErr.message)
+        console.error('[cv-versions/post] storage error (non-fatal):', storageErr.message)
       }
     }
 
-    const cv = await prisma.cvVersion.create({
-      data: {
-        user_id:    req.user.id,
-        name:       name.trim(),
-        target_type,
-        plain_text: finalPlainText,
-        file_url:   fileUrl,
-      },
-    })
+    const dbData = {
+      user_id:    req.user.id,
+      name:       name.trim(),
+      target_type,
+      plain_text: finalPlainText,
+      file_url:   fileUrl,
+    }
+    console.log('[cv-versions/post] saving to DB:', { ...dbData, plain_text: dbData.plain_text ? `[${dbData.plain_text.length} chars]` : null })
+    const cv = await prisma.cvVersion.create({ data: dbData })
+    console.log('[cv-versions/post] saved record id:', cv.id, '| file_url:', cv.file_url)
     res.status(201).json({ data: cv, error: null, message: 'CV version created successfully' })
   } catch (err) {
     next(err)
@@ -143,10 +159,13 @@ router.put('/:id', upload.single('cv_file'), async (req, res, next) => {
 
     // New file uploaded → extract text + upload to Supabase
     if (req.file) {
+      console.log('[cv-versions/put] file received:', req.file.originalname, req.file.mimetype, req.file.size, 'bytes')
       try {
-        updateData.plain_text = await extractTextFromFile(req.file.buffer, req.file.mimetype)
+        const extracted = await extractTextFromFile(req.file.buffer, req.file.mimetype)
+        console.log('[cv-versions/put] extracted text length:', extracted?.length)
+        if (extracted) updateData.plain_text = extracted
       } catch (parseErr) {
-        console.warn('[cv-versions/put] text extraction failed:', parseErr.message)
+        console.error('[cv-versions/put] text extraction FAILED:', parseErr.message)
       }
       const ext = req.file.mimetype === 'application/pdf' ? 'pdf' : 'docx'
       const fileName = `cv_${req.user.id}_${Date.now()}.${ext}`

@@ -14,6 +14,10 @@ api.interceptors.request.use(async (config) => {
   if (session?.access_token) {
     config.headers.Authorization = 'Bearer ' + session.access_token
   }
+  // FormData needs browser to set Content-Type with boundary — clear our JSON default
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
+  }
   return config
 })
 

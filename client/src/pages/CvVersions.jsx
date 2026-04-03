@@ -96,7 +96,7 @@ function CvCard({ cv, onEdit, onDelete }) {
           Added {formatDate(cv.created_at)}
         </p>
 
-        {/* Plain text preview */}
+        {/* CV content preview */}
         {cv.plain_text ? (
           <div style={{
             background: 'var(--bg-input)', border: '1px solid var(--border-subtle)',
@@ -115,30 +115,33 @@ function CvCard({ cv, onEdit, onDelete }) {
               {cv.plain_text.slice(0, 120)}
             </p>
           </div>
+        ) : cv.file_url ? (
+          <button
+            onClick={() => window.open(cv.file_url, '_blank')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '5px 10px', borderRadius: 6,
+              background: 'rgba(124,111,247,0.07)',
+              border: '1px solid rgba(124,111,247,0.25)',
+              cursor: 'pointer', transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(124,111,247,0.14)'; e.currentTarget.style.borderColor = 'rgba(124,111,247,0.45)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(124,111,247,0.07)'; e.currentTarget.style.borderColor = 'rgba(124,111,247,0.25)' }}
+          >
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="var(--accent-primary)" strokeWidth={2} style={{ flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+            <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent-primary)' }}>
+              {cv.file_url.endsWith('.docx') ? 'DOCX uploaded' : 'PDF uploaded'}
+            </span>
+            <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="var(--accent-primary)" strokeWidth={2} style={{ flexShrink: 0, opacity: 0.6 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+            </svg>
+          </button>
         ) : (
           <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
             No CV text — add it for AI matching
           </p>
-        )}
-
-        {/* Original file link */}
-        {cv.file_url && (
-          <a
-            href={cv.file_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              fontSize: 11, color: 'var(--info)', textDecoration: 'none',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
-            onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
-          >
-            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
-            Original file
-          </a>
         )}
       </div>
     </div>
@@ -188,9 +191,16 @@ function CvModal({ isOpen, onClose, initial }) {
   const [inputTab, setInputTab]   = useState('paste') // 'paste' | 'upload'
   const [selectedFile, setSelectedFile] = useState(null)
   const [dragOver, setDragOver]   = useState(false)
-  const [removeFile, setRemoveFile] = useState(false)
+  const [showReplaceZone, setShowReplaceZone] = useState(false)
 
-  function handleClose() { setErrors({}); setSelectedFile(null); setInputTab('paste'); setRemoveFile(false); onClose() }
+  function handleClose() {
+    setForm(initial ?? EMPTY_FORM)
+    setErrors({})
+    setSelectedFile(null)
+    setInputTab('paste')
+    setShowReplaceZone(false)
+    onClose()
+  }
 
   function handleChange(e) {
     const { name, value } = e.target
@@ -234,7 +244,6 @@ function CvModal({ isOpen, onClose, initial }) {
             name: form.name.trim(),
             target_type: form.target_type,
             plain_text: form.plain_text || null,
-            ...(removeFile ? { file_url: null } : {}),
           })
         }
       } else if (inputTab === 'upload' && selectedFile) {
@@ -248,7 +257,7 @@ function CvModal({ isOpen, onClose, initial }) {
       }
       handleClose()
     } catch (err) {
-      setErrors({ submit: err.response?.data?.error ?? err.message })
+      setErrors({ submit: err.message })
     }
   }
 
@@ -390,8 +399,8 @@ function CvModal({ isOpen, onClose, initial }) {
                 Uploaded File
               </label>
 
-              {/* Current file row — shown when file exists and not being replaced/removed */}
-              {initial.file_url && !removeFile && !selectedFile && (
+              {/* Current file row — shown when file exists and not in replace mode */}
+              {initial.file_url && !showReplaceZone && !selectedFile && (
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                   padding: '10px 12px', borderRadius: 8,
@@ -402,16 +411,15 @@ function CvModal({ isOpen, onClose, initial }) {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                     </svg>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {initial.file_url.split('/').pop() || 'Uploaded file'}
+                      Current file: {initial.file_url.split('/').pop() || 'uploaded file'}
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <a
-                      href={initial.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => window.open(initial.file_url, '_blank')}
                       style={{
-                        fontSize: 11, color: 'var(--info)', textDecoration: 'none',
+                        fontSize: 11, color: 'var(--info)', cursor: 'pointer',
                         padding: '3px 8px', borderRadius: 5,
                         border: '1px solid rgba(96,165,250,0.25)',
                         background: 'rgba(96,165,250,0.08)',
@@ -419,25 +427,11 @@ function CvModal({ isOpen, onClose, initial }) {
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(96,165,250,0.16)' }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(96,165,250,0.08)' }}
                     >
-                      View
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => setRemoveFile(true)}
-                      style={{
-                        fontSize: 11, color: 'var(--danger)', cursor: 'pointer',
-                        padding: '3px 8px', borderRadius: 5,
-                        border: '1px solid rgba(239,68,68,0.25)',
-                        background: 'rgba(239,68,68,0.06)',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.14)' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)' }}
-                    >
-                      Remove
+                      View file
                     </button>
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => setShowReplaceZone(true)}
                       style={{
                         fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer',
                         padding: '3px 8px', borderRadius: 5,
@@ -447,34 +441,27 @@ function CvModal({ isOpen, onClose, initial }) {
                       onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active)'; e.currentTarget.style.color = 'var(--text-primary)' }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
                     >
-                      Replace
+                      Replace file
                     </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      style={{ display: 'none' }}
-                      onChange={e => handleFileSelect(e.target.files?.[0])}
-                    />
                   </div>
                 </div>
               )}
 
-              {/* Upload zone — shown when no file, or removing, or replacing */}
-              {(!initial.file_url || removeFile || selectedFile) && (
+              {/* Upload zone — shown when no existing file, or Replace file was clicked */}
+              {(!initial.file_url || showReplaceZone || selectedFile) && (
                 <div>
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     style={{ display: 'none' }}
-                    onChange={e => { handleFileSelect(e.target.files?.[0]); setRemoveFile(false) }}
+                    onChange={e => handleFileSelect(e.target.files?.[0])}
                   />
                   <div
                     onClick={() => fileInputRef.current?.click()}
                     onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                     onDragLeave={() => setDragOver(false)}
-                    onDrop={e => { e.preventDefault(); setDragOver(false); handleFileSelect(e.dataTransfer.files?.[0]); setRemoveFile(false) }}
+                    onDrop={e => { e.preventDefault(); setDragOver(false); handleFileSelect(e.dataTransfer.files?.[0]) }}
                     style={{
                       border: `2px dashed ${dragOver ? 'var(--accent-primary)' : selectedFile ? 'var(--success)' : 'var(--border-default)'}`,
                       borderRadius: 10, padding: '20px 16px',
@@ -499,24 +486,20 @@ function CvModal({ isOpen, onClose, initial }) {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                         </svg>
                         <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
-                          {removeFile ? 'Upload a replacement file' : 'Drop your CV or '}
-                          {!removeFile && <span style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>click to browse</span>}
+                          Drop your CV here or <span style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>click to browse</span>
                         </p>
                         <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>PDF or DOCX · max 5 MB</p>
                       </div>
                     )}
                   </div>
-                  {removeFile && !selectedFile && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                      <p style={{ margin: 0, fontSize: 11, color: 'var(--warning)' }}>File will be removed on save</p>
-                      <button
-                        type="button"
-                        onClick={() => setRemoveFile(false)}
-                        style={{ fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                  {initial.file_url && showReplaceZone && !selectedFile && (
+                    <button
+                      type="button"
+                      onClick={() => setShowReplaceZone(false)}
+                      style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      ← Keep current file
+                    </button>
                   )}
                   {errors.file && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--danger)' }}>{errors.file}</p>}
                 </div>
