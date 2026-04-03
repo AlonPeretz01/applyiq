@@ -27,7 +27,7 @@ export function useCreateCvVersion() {
 export function useUpdateCvVersion() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...data }) => cvVersionsApi.update(id, data),
+    mutationFn: ({ id, formData, ...data }) => cvVersionsApi.update(id, formData ?? data),
     onSuccess: () => qc.invalidateQueries({ queryKey: CV_KEYS.all }),
   })
 }

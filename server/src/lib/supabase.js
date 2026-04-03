@@ -8,5 +8,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
 export default supabase
+
+// Service-role client — bypasses RLS, used for storage uploads
+export const supabaseAdmin = createClient(
+  supabaseUrl,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
+)

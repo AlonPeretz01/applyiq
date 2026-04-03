@@ -2,12 +2,15 @@ import api from './client.js'
 
 export const cvGeneratorApi = {
   // POST /api/cv-generator/generate
-  // Returns { data: { html, cvData }, error, message }
   generate: (jobId, cvVersionId) =>
     api.post('/cv-generator/generate', { job_id: jobId, cv_version_id: cvVersionId }),
 
   // POST /api/cv-generator/download
-  // Returns a PDF as arraybuffer for reliable binary handling
-  download: (html) =>
-    api.post('/cv-generator/download', { html }, { responseType: 'arraybuffer' }),
+  // jobId is optional — if provided, the PDF is saved to storage and linked to the application
+  download: (html, jobId) =>
+    api.post('/cv-generator/download', { html, jobId }, { responseType: 'arraybuffer' }),
+
+  // GET /api/cv-generator/download/:applicationId
+  getCvForApplication: (applicationId) =>
+    api.get(`/cv-generator/download/${applicationId}`),
 }

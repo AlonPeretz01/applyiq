@@ -103,6 +103,7 @@
 .page-wrapper {
   padding: 32px 36px;
   max-width: 1200px;
+  overflow-x: hidden;
 }
 @media (max-width: 767px) {
   .page-wrapper {
@@ -200,4 +201,12 @@
 .apps-table { width: 100%; border-collapse: collapse; min-width: 900px; }
 @media (max-width: 767px) {
   .apps-table { min-width: unset; }
+}
+
+/* CV Performance table ↔ card list toggle */
+.cv-perf-table { display: table; width: 100%; border-collapse: collapse; }
+.cv-perf-cards { display: none; }
+@media (max-width: 767px) {
+  .cv-perf-table { display: none; }
+  .cv-perf-cards { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
 }

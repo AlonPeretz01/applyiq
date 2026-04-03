@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useJobs, useCreateJob, useDeleteJob } from '../hooks/useJobs.js'
 import { useCvVersions } from '../hooks/useCvVersions.js'
 import { useCreateApplication } from '../hooks/useApplications.js'
+import { applicationsApi } from '../api/applications.js'
 import { useAiAnalysis, getSavedAnalysis } from '../hooks/useAiAnalysis.js'
 import { useToast } from '../context/ToastContext.jsx'
 import Modal, { ConfirmModal } from '../components/Modal.jsx'
@@ -147,9 +148,9 @@ function SectionLabel({ children }) {
 // ─── Analysis Modal ───────────────────────────────────────────────────────────
 function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onReanalyze, reanalyzing, onApplyWithCv }) {
   const createApp = useCreateApplication()
-  const toast = useToast()
-  const [applying, setApplying] = useState(false)
-  const [applied, setApplied]   = useState(false)
+  const toast     = useToast()
+  const [applyMode, setApplyMode] = useState(null) // null | 'existing' | 'tailored'
+  const [applied, setApplied]     = useState(false)
 
   if (!isOpen || !result || !job) return null
 
@@ -158,28 +159,52 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
     ? cvVersions.find((cv) => cv.id === recommendation.recommended_cv_id)
     : null
 
-  async function handleQuickApply() {
+  async function handleApplyExisting() {
     if (!recommendation?.recommended_cv_id) return
-    setApplying(true)
+    setApplyMode('existing')
     try {
-      await createApp.mutateAsync({
+      const app = await createApp.mutateAsync({
         job_id: job.id,
         cv_version_id: recommendation.recommended_cv_id,
         match_score: recommendation.match_score != null ? Math.round(recommendation.match_score) : null,
         notes: null,
       })
-      toast.success('Application created!')
-      onApplyWithCv({ cvVersionId: recommendation.recommended_cv_id })
+      // Immediately mark as APPLIED
+      await applicationsApi.updateStatus(app.data.id, 'APPLIED', null)
+      // If the recommended CV has a file, save it as the CV URL on the application
+      if (recCv?.file_url) {
+        try { await applicationsApi.update(app.data.id, { generated_cv_url: recCv.file_url }) } catch (_) {}
+      }
+      setApplied(true)
+      toast.success('Application created! Check Applications to track it.')
     } catch (err) {
-      toast.error(err.response?.data?.error ?? 'Failed to create application')
+      toast.error(err.message || 'Failed to create application')
     } finally {
-      setApplying(false)
+      setApplyMode(null)
+    }
+  }
+
+  async function handleGenerateTailored() {
+    if (!recommendation?.recommended_cv_id) return
+    setApplyMode('tailored')
+    try {
+      const app = await createApp.mutateAsync({
+        job_id: job.id,
+        cv_version_id: recommendation.recommended_cv_id,
+        match_score: recommendation.match_score != null ? Math.round(recommendation.match_score) : null,
+        notes: null,
+      })
+      onApplyWithCv({ cvVersionId: recommendation.recommended_cv_id, appId: app.data.id })
+    } catch (err) {
+      toast.error(err.message || 'Failed to create application')
+      setApplyMode(null)
     }
   }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`AI Analysis — ${job.company_name}`} maxWidth={600}>
-      <div style={{ maxHeight: '68vh', overflowY: 'auto', marginRight: -8, paddingRight: 8, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Scrollable analysis content */}
+      <div style={{ maxHeight: '52vh', overflowY: 'auto', marginRight: -8, paddingRight: 8, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* CVs being analyzed */}
         {cvVersions.length > 0 && (
@@ -383,44 +408,6 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
           </div>
         )}
 
-        {/* Quick Apply */}
-        {recommendation?.recommended_cv_id && !applied && (
-          <button
-            onClick={handleQuickApply}
-            disabled={applying}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '10px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-              background: applying ? 'var(--bg-elevated)' : 'var(--success)',
-              border: 'none', color: '#fff',
-              cursor: applying ? 'not-allowed' : 'pointer',
-              opacity: applying ? 0.7 : 1, transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { if (!applying) e.currentTarget.style.filter = 'brightness(1.1)' }}
-            onMouseLeave={e => { e.currentTarget.style.filter = 'none' }}
-          >
-            {applying ? (
-              <><Spinner size={14} /> Creating…</>
-            ) : (
-              <>
-                Apply with this CV
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </>
-            )}
-          </button>
-        )}
-
-        {applied && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--success)', fontSize: 13, padding: '4px 0' }}>
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-            Application created!
-          </div>
-        )}
-
         {/* How to improve your chances — merged match_tips + suggested_tweaks, deduped */}
         {(() => {
           const tips = [...(analysis?.match_tips ?? []), ...(recommendation?.suggested_tweaks ?? [])]
@@ -449,6 +436,88 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
           )
         })()}
       </div>
+
+      {/* ── Ready to apply? choice panel — outside scroll so always visible ── */}
+      {recommendation?.recommended_cv_id && (
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
+          {!applied ? (
+            <div style={{ border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Ready to apply?</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {/* Option 1 — existing CV */}
+                <button
+                  onClick={handleApplyExisting}
+                  disabled={!!applyMode}
+                  style={{
+                    width: '100%', textAlign: 'left', padding: '14px 16px',
+                    background: 'transparent', border: 'none',
+                    borderBottom: '1px solid var(--border-subtle)',
+                    cursor: applyMode ? 'not-allowed' : 'pointer',
+                    opacity: applyMode && applyMode !== 'existing' ? 0.45 : 1,
+                    transition: 'background 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 14,
+                  }}
+                  onMouseEnter={e => { if (!applyMode) e.currentTarget.style.background = 'var(--bg-elevated)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <div style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)' }}>
+                    {applyMode === 'existing' ? <Spinner size={14} /> : (
+                      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#60A5FA" strokeWidth={1.75}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                      {applyMode === 'existing' ? 'Creating application…' : 'Apply with existing CV'}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>Use your current CV as-is</p>
+                  </div>
+                </button>
+
+                {/* Option 2 — generate tailored */}
+                <button
+                  onClick={handleGenerateTailored}
+                  disabled={!!applyMode}
+                  style={{
+                    width: '100%', textAlign: 'left', padding: '14px 16px',
+                    background: 'transparent', border: 'none',
+                    cursor: applyMode ? 'not-allowed' : 'pointer',
+                    opacity: applyMode && applyMode !== 'tailored' ? 0.45 : 1,
+                    transition: 'background 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 14,
+                  }}
+                  onMouseEnter={e => { if (!applyMode) e.currentTarget.style.background = 'var(--bg-elevated)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <div style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-glow)', border: '1px solid rgba(124,111,247,0.3)' }}>
+                    {applyMode === 'tailored' ? <Spinner size={14} /> : (
+                      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="var(--accent-primary)" strokeWidth={1.75}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                      {applyMode === 'tailored' ? 'Creating application…' : 'Generate tailored CV'}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>Let AI customize it for this job</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--success)', fontSize: 13, padding: '4px 0' }}>
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+              Application created! Check Applications to track it.
+            </div>
+          )}
+        </div>
+      )}
     </Modal>
   )
 }
@@ -502,8 +571,9 @@ export default function Jobs() {
   const [confirmState, setConfirm] = useState({ open: false, target: null })
 
   // CV Preview Modal state
-  const [cvPreviewOpen, setCvPreviewOpen]         = useState(false)
+  const [cvPreviewOpen, setCvPreviewOpen]               = useState(false)
   const [cvPreviewCvVersionId, setCvPreviewCvVersionId] = useState(null)
+  const [cvPreviewAppId, setCvPreviewAppId]             = useState(null)
 
   // On page load, fetch saved analyses for all jobs (cheap DB calls, no AI).
   useEffect(() => {
@@ -555,9 +625,10 @@ export default function Jobs() {
     }
   }
 
-  function handleApplyWithCv({ cvVersionId }) {
+  function handleApplyWithCv({ cvVersionId, appId }) {
     setAnalysisModalOpen(false)
     setCvPreviewCvVersionId(cvVersionId)
+    setCvPreviewAppId(appId ?? null)
     setCvPreviewOpen(true)
   }
 
@@ -610,7 +681,7 @@ export default function Jobs() {
       setAnalysisResult(data)
       setAnalysisModalOpen(true)
     } catch (err) {
-      toast.error(err.response?.data?.error ?? 'AI analysis failed. Check the job description.')
+      toast.error(err.message || 'AI analysis failed. Check the job description.')
     } finally {
       setAnalyzingId(null)
     }
@@ -629,7 +700,7 @@ export default function Jobs() {
       setAnalysisSavedAt(saved?.created_at ?? null)
       setAnalysisResult(data)
     } catch (err) {
-      toast.error(err.response?.data?.error ?? 'Re-analysis failed.')
+      toast.error(err.message || 'Re-analysis failed.')
     } finally {
       setReanalyzingId(null)
     }
@@ -1028,6 +1099,8 @@ export default function Jobs() {
         cvVersionId={cvPreviewCvVersionId}
         jobTitle={analysisJob?.title}
         companyName={analysisJob?.company_name}
+        applicationId={cvPreviewAppId}
+        jobUrl={analysisJob?.url}
       />
 
       {/* Confirm Delete */}

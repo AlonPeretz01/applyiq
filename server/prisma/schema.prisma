@@ -86,9 +86,11 @@ model Application {
   cover_letter_id String?
   applied_at      DateTime?
   status          ApplicationStatus @default(DRAFT)
-  match_score     Float?
-  notes           String?           @db.Text
-  updated_at      DateTime          @updatedAt
+  match_score        Float?
+  notes              String?  @db.Text
+  generated_cv_url   String?
+  generated_cv_html  String?  @db.Text
+  updated_at         DateTime @updatedAt
 
   job          Job          @relation(fields: [job_id], references: [id], onDelete: Cascade)
   cv_version   CvVersion    @relation(fields: [cv_version_id], references: [id])

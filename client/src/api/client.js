@@ -21,8 +21,12 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    const message = error.response?.data?.error?.message || error.message || 'Unknown error'
-    return Promise.reject(new Error(message))
+    const data = error.response?.data
+    // Use the human-readable message from the server first, then the short error string
+    const message = data?.message || data?.error || error.message || 'Unknown error'
+    const enriched = new Error(message)
+    enriched.status = error.response?.status
+    return Promise.reject(enriched)
   }
 )
 

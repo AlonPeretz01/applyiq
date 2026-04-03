@@ -5,6 +5,7 @@ const requiredEnvVars = [
   'DATABASE_URL',
   'SUPABASE_URL',
   'SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
   'ANTHROPIC_API_KEY',
   'PORT',
 ]
@@ -72,8 +73,7 @@ app.get('/api/health', (req, res) =>
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 app.use(generalLimiter)
-app.use('/api/ai',           aiLimiter)
-app.use('/api/cv-generator', cvLimiter)
+// Note: aiLimiter and cvLimiter are applied per-route AFTER requireAuth so req.user is available for skip()
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use('/api/jobs',          requireAuth, jobsRouter)
@@ -81,10 +81,10 @@ app.use('/api/cv-versions',   requireAuth, cvVersionsRouter)
 app.use('/api/applications',  requireAuth, applicationsRouter)
 app.use('/api/cover-letters', requireAuth, coverLettersRouter)
 app.use('/api/status-history',requireAuth, statusHistoryRouter)
-app.use('/api/ai',            requireAuth, aiRouter)
-app.use('/api/cv-generator',  requireAuth, cvGeneratorRouter)
+app.use('/api/ai',            requireAuth, aiLimiter, aiRouter)
+app.use('/api/cv-generator',  requireAuth, cvLimiter, cvGeneratorRouter)
 app.use('/api/profile',       requireAuth, profileRouter)
-app.use('/api/analytics',    requireAuth, analyticsRouter)
+app.use('/api/analytics',     requireAuth, analyticsRouter)
 
 // ─── Error handling ──────────────────────────────────────────────────────────
 app.use(notFound)

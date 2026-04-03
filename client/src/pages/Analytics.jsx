@@ -406,22 +406,19 @@ export default function Analytics() {
         </SectionCard>
       </div>
 
-      {/* ── Row 4: CV Performance table ── */}
+      {/* ── Row 4: CV Performance ── */}
       {data.cv_performance.length > 0 && (
         <SectionCard title="CV Performance">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+
+          {/* Desktop table */}
+          <table className="cv-perf-table">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 {['CV Name', 'Type', 'Uses', 'Avg Match', 'Interviews'].map(h => (
                   <th key={h} style={{
-                    textAlign: 'left',
-                    padding: '10px 20px',
-                    fontSize: 10,
-                    fontWeight: 500,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    whiteSpace: 'nowrap',
+                    textAlign: 'left', padding: '10px 20px',
+                    fontSize: 10, fontWeight: 500, color: 'var(--text-muted)',
+                    textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap',
                   }}>
                     {h}
                   </th>
@@ -436,56 +433,75 @@ export default function Analytics() {
                   onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                 >
-                  <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {cv.cv_name}
-                  </td>
+                  <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{cv.cv_name}</td>
                   <td style={{ padding: '12px 20px' }}>
-                    <span style={{
-                      fontSize: 11, fontWeight: 500,
-                      color: '#7C6FF7',
-                      background: 'rgba(124,111,247,0.1)',
-                      padding: '2px 8px',
-                      borderRadius: 20,
-                      border: '1px solid rgba(124,111,247,0.25)',
-                    }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: '#7C6FF7', background: 'rgba(124,111,247,0.1)', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(124,111,247,0.25)' }}>
                       {cv.cv_type}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 20px', fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {cv.uses}
-                  </td>
+                  <td style={{ padding: '12px 20px', fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: 'var(--text-secondary)' }}>{cv.uses}</td>
                   <td style={{ padding: '12px 20px' }}>
                     {cv.avg_match == null ? (
                       <span style={{ color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>—</span>
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{
-                          width: 7, height: 7, borderRadius: '50%',
-                          background: matchColor(cv.avg_match),
-                          boxShadow: `0 0 6px ${matchColor(cv.avg_match)}`,
-                          flexShrink: 0,
-                        }} />
-                        <span style={{
-                          fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
-                          fontWeight: 600, color: matchColor(cv.avg_match),
-                        }}>
-                          {cv.avg_match}%
-                        </span>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: matchColor(cv.avg_match), boxShadow: `0 0 6px ${matchColor(cv.avg_match)}`, flexShrink: 0 }} />
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 600, color: matchColor(cv.avg_match) }}>{cv.avg_match}%</span>
                       </div>
                     )}
                   </td>
-                  <td style={{
-                    padding: '12px 20px',
-                    fontFamily: 'JetBrains Mono, monospace', fontSize: 13,
-                    color: cv.interviews > 0 ? '#A78BFA' : 'var(--text-secondary)',
-                    fontWeight: cv.interviews > 0 ? 600 : 400,
-                  }}>
+                  <td style={{ padding: '12px 20px', fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: cv.interviews > 0 ? '#A78BFA' : 'var(--text-secondary)', fontWeight: cv.interviews > 0 ? 600 : 400 }}>
                     {cv.interviews}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {/* Mobile cards */}
+          <div className="cv-perf-cards">
+            {data.cv_performance.map((cv, i) => (
+              <div key={i} style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 10, padding: '12px 14px',
+                display: 'flex', flexDirection: 'column', gap: 8,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {cv.cv_name}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: '#7C6FF7', background: 'rgba(124,111,247,0.1)', padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(124,111,247,0.25)', flexShrink: 0 }}>
+                    {cv.cv_type}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Uses</span>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: 'var(--text-secondary)' }}>{cv.uses}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Avg Match</span>
+                    {cv.avg_match == null ? (
+                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: 'var(--text-muted)' }}>—</span>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: matchColor(cv.avg_match), flexShrink: 0 }} />
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, fontWeight: 600, color: matchColor(cv.avg_match) }}>{cv.avg_match}%</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Interviews</span>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: cv.interviews > 0 ? '#A78BFA' : 'var(--text-secondary)', fontWeight: cv.interviews > 0 ? 600 : 400 }}>
+                      {cv.interviews}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
         </SectionCard>
       )}
     </div>

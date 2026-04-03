@@ -40,7 +40,21 @@ export function useUpdateApplicationStatus() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, status, note }) => applicationsApi.updateStatus(id, status, note),
-    onSuccess: () => qc.invalidateQueries({ queryKey: APPLICATION_KEYS.all }),
+    onMutate: async ({ id, status }) => {
+      await qc.cancelQueries({ queryKey: APPLICATION_KEYS.all })
+      const key = APPLICATION_KEYS.list(undefined)
+      const previous = qc.getQueryData(key)
+      qc.setQueryData(key, (old) =>
+        old?.map(app => app.id === id ? { ...app, status } : app)
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        qc.setQueryData(APPLICATION_KEYS.list(undefined), context.previous)
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: APPLICATION_KEYS.all }),
   })
 }
 

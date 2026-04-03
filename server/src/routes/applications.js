@@ -54,13 +54,14 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const { job_id, cv_version_id, cover_letter_id, notes, match_score } = req.body
+    console.log('[POST /applications] body:', req.body)
     if (!job_id) {
       return res.status(400).json({ data: null, error: 'job_id is required', message: 'job_id is required' })
     }
     if (!cv_version_id) {
       return res.status(400).json({ data: null, error: 'cv_version_id is required', message: 'cv_version_id is required' })
     }
-    if (match_score !== undefined && (typeof match_score !== 'number' || match_score < 0 || match_score > 100)) {
+    if (match_score !== undefined && match_score !== null && (typeof match_score !== 'number' || match_score < 0 || match_score > 100)) {
       return res.status(400).json({ data: null, error: 'match_score must be a number between 0 and 100', message: 'match_score must be a number between 0 and 100' })
     }
     const application = await prisma.application.create({
@@ -136,7 +137,7 @@ router.put('/:id', async (req, res, next) => {
     if (!existing || existing.user_id !== req.user.id) {
       return res.status(404).json({ data: null, error: 'Application not found', message: 'Application not found' })
     }
-    const { cv_version_id, cover_letter_id, notes, match_score } = req.body
+    const { cv_version_id, cover_letter_id, notes, match_score, generated_cv_url } = req.body
     if (match_score !== undefined && match_score !== null) {
       if (typeof match_score !== 'number' || match_score < 0 || match_score > 100) {
         return res.status(400).json({ data: null, error: 'match_score must be a number between 0 and 100', message: 'match_score must be a number between 0 and 100' })
@@ -149,6 +150,7 @@ router.put('/:id', async (req, res, next) => {
         ...(cover_letter_id !== undefined && { cover_letter_id }),
         ...(notes !== undefined && { notes }),
         ...(match_score !== undefined && { match_score }),
+        ...(generated_cv_url !== undefined && { generated_cv_url }),
       },
       include: applicationInclude,
     })

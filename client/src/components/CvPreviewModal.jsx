@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cvGeneratorApi } from '../api/cvGenerator.js'
+import { applicationsApi } from '../api/applications.js'
 import Modal from './Modal.jsx'
 
 // ─── States ───────────────────────────────────────────────────────────────────
@@ -8,17 +9,20 @@ import Modal from './Modal.jsx'
 // preview  → iframe + Download / Close buttons
 // error    → error message + retry
 
-export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jobTitle, companyName }) {
+export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jobTitle, companyName, applicationId, jobUrl }) {
   const [phase, setPhase]         = useState('idle')
   const [html, setHtml]           = useState(null)
   const [errorMsg, setErrorMsg]   = useState(null)
   const [downloading, setDownloading] = useState(false)
+  const [markingApplied, setMarkingApplied] = useState(false)
+  const [markedApplied, setMarkedApplied]   = useState(false)
 
   // Reset state when modal opens fresh
   function handleClose() {
     setPhase('idle')
     setHtml(null)
     setErrorMsg(null)
+    setMarkedApplied(false)
     onClose()
   }
 
@@ -27,7 +31,6 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
     setErrorMsg(null)
     try {
       const res = await cvGeneratorApi.generate(jobId, cvVersionId)
-      // res is { data: { html, cvData }, error, message } (after axios interceptor)
       setHtml(res.data.html)
       setPhase('preview')
     } catch (err) {
@@ -40,8 +43,7 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
     if (!html) return
     setDownloading(true)
     try {
-      // Interceptor returns response.data; with responseType: 'arraybuffer' that's an ArrayBuffer
-      const arrayBuffer = await cvGeneratorApi.download(html)
+      const arrayBuffer = await cvGeneratorApi.download(html, jobId)
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -58,6 +60,19 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
     }
   }
 
+  async function handleMarkApplied() {
+    if (!applicationId) return
+    setMarkingApplied(true)
+    try {
+      await applicationsApi.updateStatus(applicationId, 'APPLIED', null)
+      setMarkedApplied(true)
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to update status')
+    } finally {
+      setMarkingApplied(false)
+    }
+  }
+
   const title = companyName && jobTitle
     ? `Tailored CV — ${companyName} · ${jobTitle}`
     : 'Generate Tailored CV'
@@ -69,7 +84,6 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
         {/* ── idle ── */}
         {phase === 'idle' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Info card */}
             <div style={{
               padding: '14px 16px',
               background: 'var(--bg-input)',
@@ -86,12 +100,10 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
               </p>
             </div>
 
-            {/* Note */}
             <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
               CV is tailored to highlight skills relevant to this role
             </p>
 
-            {/* Generate button */}
             <button
               onClick={handleGenerate}
               style={{
@@ -137,12 +149,10 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
         {/* ── preview ── */}
         {phase === 'preview' && html && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {/* Note */}
             <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>
               CV is tailored to highlight skills relevant to this role
             </p>
 
-            {/* iframe preview */}
             <iframe
               srcDoc={html}
               title="CV Preview"
@@ -153,7 +163,7 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
               sandbox="allow-same-origin"
             />
 
-            {/* Action buttons */}
+            {/* Download + Close */}
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={handleDownload}
@@ -198,6 +208,70 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
                 Close
               </button>
             </div>
+
+            {/* Mark as Applied — only shown if we have an applicationId */}
+            {applicationId && !markedApplied && (
+              <button
+                onClick={handleMarkApplied}
+                disabled={markingApplied}
+                style={{
+                  width: '100%', padding: '9px 0', borderRadius: 8, fontSize: 13, fontWeight: 500,
+                  background: markingApplied ? 'var(--bg-elevated)' : 'rgba(34,197,94,0.1)',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  color: markingApplied ? 'var(--text-muted)' : 'var(--success)',
+                  cursor: markingApplied ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { if (!markingApplied) { e.currentTarget.style.background = 'rgba(34,197,94,0.16)' } }}
+                onMouseLeave={e => { if (!markingApplied) { e.currentTarget.style.background = 'rgba(34,197,94,0.1)' } }}
+              >
+                {markingApplied ? (
+                  <>
+                    <div className="anim-spin" style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(34,197,94,0.3)', borderTopColor: 'var(--success)' }} />
+                    Updating…
+                  </>
+                ) : (
+                  <>
+                    Mark as Applied
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Post-mark-applied actions */}
+            {markedApplied && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--success)', fontSize: 13, padding: '2px 0' }}>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  Application marked as Applied!
+                </div>
+                {jobUrl && (
+                  <button
+                    onClick={() => window.open(jobUrl, '_blank')}
+                    style={{
+                      width: '100%', padding: '9px 0', borderRadius: 8, fontSize: 13, fontWeight: 500,
+                      background: 'transparent', border: '1px solid var(--border-default)',
+                      color: 'var(--text-secondary)', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                  >
+                    Open job listing
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

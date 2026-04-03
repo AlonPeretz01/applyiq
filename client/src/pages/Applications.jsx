@@ -55,22 +55,52 @@ function ScoreRing({ score }) {
 }
 
 // ─── Status dropdown ──────────────────────────────────────────────────────────
+// Uses position:fixed so it's never clipped by table overflow.
+const DROPDOWN_HEIGHT = 300 // approximate max height for all status items
+
 function StatusDropdown({ appId, current, onUpdate }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [pos, setPos] = useState({ top: 0, left: 0, openUp: false, bottomVal: 0 })
+  const btnRef = useRef(null)
+  const dropRef = useRef(null)
 
   useEffect(() => {
-    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    if (open) document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    if (!open) return
+    function handleOutside(e) {
+      if (!btnRef.current?.contains(e.target) && !dropRef.current?.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    function handleScroll() { setOpen(false) }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('scroll', handleScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('scroll', handleScroll, true)
+    }
   }, [open])
+
+  function handleToggle() {
+    if (open) { setOpen(false); return }
+    const rect = btnRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const openUp = spaceBelow < DROPDOWN_HEIGHT
+    setPos({
+      top: rect.bottom + 4,
+      left: rect.left,
+      openUp,
+      bottomVal: window.innerHeight - rect.top + 4,
+    })
+    setOpen(true)
+  }
 
   function pick(status) { if (status !== current) onUpdate(appId, status); setOpen(false) }
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }} ref={ref}>
+    <>
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={btnRef}
+        onClick={handleToggle}
         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', transition: 'opacity 0.15s' }}
         title="Click to change status"
         onMouseEnter={e => { e.currentTarget.style.opacity = '0.75' }}
@@ -80,16 +110,22 @@ function StatusDropdown({ appId, current, onUpdate }) {
       </button>
 
       {open && (
-        <div style={{
-          position: 'absolute', left: 0, top: '100%', marginTop: 4,
-          zIndex: 20, minWidth: 140,
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 10,
-          boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
-          padding: '4px',
-          overflow: 'hidden',
-        }}>
+        <div
+          ref={dropRef}
+          style={{
+            position: 'fixed',
+            top: pos.openUp ? 'auto' : pos.top,
+            bottom: pos.openUp ? pos.bottomVal : 'auto',
+            left: pos.left,
+            zIndex: 9999,
+            minWidth: 140,
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 10,
+            boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+            padding: '4px',
+          }}
+        >
           {ALL_STATUSES.map(s => {
             const meta = STATUS_META[s]
             const isActive = s === current
@@ -119,7 +155,7 @@ function StatusDropdown({ appId, current, onUpdate }) {
           })}
         </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -161,12 +197,14 @@ export default function Applications() {
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
     try {
-      await createApp.mutateAsync({
+      const payload = {
         job_id: form.job_id,
         cv_version_id: form.cv_version_id,
         match_score: form.match_score !== '' ? Number(form.match_score) : null,
         notes: form.notes || null,
-      })
+      }
+      console.log('[New Application] submitting:', payload)
+      await createApp.mutateAsync(payload)
       closeModal()
     } catch (err) {
       setErrors({ submit: err.message })
@@ -266,19 +304,32 @@ export default function Applications() {
 
                     {/* CV Version */}
                     <td className="col-hide-mobile" style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{
-                        fontSize: 12, color: 'var(--text-secondary)',
-                        background: 'var(--bg-elevated)',
-                        border: '1px solid var(--border-subtle)',
-                        borderRadius: 6, padding: '3px 8px',
-                      }}>
-                        {app.cv_version?.name ?? '—'}
-                        {app.cv_version?.target_type && (
-                          <span style={{ marginLeft: 6, color: 'var(--text-muted)', fontSize: 10 }}>
-                            {app.cv_version.target_type}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: 12, color: 'var(--text-secondary)',
+                          background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 6, padding: '3px 8px',
+                        }}>
+                          {app.cv_version?.name ?? '—'}
+                          {app.cv_version?.target_type && (
+                            <span style={{ marginLeft: 6, color: 'var(--text-muted)', fontSize: 10 }}>
+                              {app.cv_version.target_type}
+                            </span>
+                          )}
+                        </span>
+                        {app.generated_cv_url && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 500,
+                            color: 'var(--success)',
+                            background: 'rgba(34,197,94,0.08)',
+                            border: '1px solid rgba(34,197,94,0.25)',
+                            borderRadius: 10, padding: '2px 7px',
+                          }}>
+                            CV Ready
                           </span>
                         )}
-                      </span>
+                      </div>
                     </td>
 
                     {/* Date */}
@@ -310,8 +361,36 @@ export default function Applications() {
                       </span>
                     </td>
 
-                    {/* Delete */}
+                    {/* Actions: download CV + delete */}
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                        {app.generated_cv_url && (
+                          <button
+                            onClick={() => window.open(app.generated_cv_url, '_blank')}
+                            title="Download tailored CV"
+                            style={{
+                              width: 30, height: 30, borderRadius: 8,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              background: 'var(--bg-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                              color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.color = 'var(--success)'
+                              e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)'
+                              e.currentTarget.style.background = 'rgba(34,197,94,0.08)'
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.color = 'var(--text-muted)'
+                              e.currentTarget.style.borderColor = 'var(--border-subtle)'
+                              e.currentTarget.style.background = 'var(--bg-elevated)'
+                            }}
+                          >
+                            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                          </button>
+                        )}
                       <button
                         onClick={() => askDelete(app)}
                         style={{
@@ -337,6 +416,7 @@ export default function Applications() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                         </svg>
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
