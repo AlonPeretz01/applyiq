@@ -53,7 +53,7 @@ router.get('/:id', async (req, res, next) => {
 // ─── POST /api/applications ───────────────────────────────────────────────────
 router.post('/', async (req, res, next) => {
   try {
-    const { job_id, cv_version_id, cover_letter_id, notes, match_score, status, applied_at, original_cv_url } = req.body
+    const { job_id, cv_version_id, cover_letter_id, notes, match_score, status, applied_at, original_cv_url, generated_cv_url, generated_cv_html } = req.body
     console.log('[POST /applications] body:', req.body)
     if (!job_id) {
       return res.status(400).json({ data: null, error: 'job_id is required', message: 'job_id is required' })
@@ -73,8 +73,10 @@ router.post('/', async (req, res, next) => {
         cover_letter_id:  cover_letter_id ?? null,
         notes:            notes ?? null,
         match_score:      match_score ?? null,
-        status:           initialStatus,
-        original_cv_url:  original_cv_url ?? null,
+        status:              initialStatus,
+        original_cv_url:     original_cv_url     ?? null,
+        generated_cv_url:    generated_cv_url    ?? null,
+        generated_cv_html:   generated_cv_html   ?? null,
         ...(applied_at && { applied_at: new Date(applied_at) }),
         status_history: {
           create: { new_status: initialStatus, note: 'Application created' },

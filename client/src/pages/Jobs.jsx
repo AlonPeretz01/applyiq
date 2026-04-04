@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useJobs, useCreateJob, useDeleteJob } from '../hooks/useJobs.js'
+import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from '../hooks/useJobs.js'
 import { useCvVersions } from '../hooks/useCvVersions.js'
 import { useApplications, useCreateApplication } from '../hooks/useApplications.js'
 import { applicationsApi } from '../api/applications.js'
@@ -658,11 +658,13 @@ export default function Jobs() {
   const { data: cvVersions = [] }      = useCvVersions()
   const { data: applications = [] }    = useApplications()
   const createJob   = useCreateJob()
+  const updateJob   = useUpdateJob()
   const deleteJob   = useDeleteJob()
   const aiAnalysis  = useAiAnalysis()
   const toast       = useToast()
 
   const [addModalOpen, setAddModalOpen]     = useState(false)
+  const [editJob, setEditJob]               = useState(null) // null = add mode, job object = edit mode
   const [form, setForm]                     = useState(EMPTY_FORM)
   const [errors, setErrors]                 = useState({})
 
@@ -681,7 +683,6 @@ export default function Jobs() {
   // CV Preview Modal state
   const [cvPreviewOpen, setCvPreviewOpen]               = useState(false)
   const [cvPreviewCvVersionId, setCvPreviewCvVersionId] = useState(null)
-  const [cvPreviewAppId, setCvPreviewAppId]             = useState(null)
   const [cvPreviewMatchScore, setCvPreviewMatchScore]   = useState(null)
 
   // On page load, fetch saved analyses for all jobs (cheap DB calls, no AI).
@@ -701,7 +702,20 @@ export default function Jobs() {
     })
   }, [jobs])
 
-  function openAdd() { setForm(EMPTY_FORM); setErrors({}); setAddModalOpen(true) }
+  function openAdd() { setEditJob(null); setForm(EMPTY_FORM); setErrors({}); setAddModalOpen(true) }
+
+  function openEdit(job) {
+    setEditJob(job)
+    setForm({
+      company_name: job.company_name,
+      title:        job.title,
+      description:  job.description || '',
+      url:          job.url         || '',
+      source:       job.source      || '',
+    })
+    setErrors({})
+    setAddModalOpen(true)
+  }
 
   function handleChange(e) {
     const { name, value } = e.target
@@ -720,24 +734,29 @@ export default function Jobs() {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
+    const payload = {
+      company_name: form.company_name.trim(),
+      title:        form.title.trim(),
+      description:  form.description || null,
+      url:          form.url         || null,
+      source:       form.source      || null,
+    }
     try {
-      await createJob.mutateAsync({
-        company_name: form.company_name.trim(),
-        title:        form.title.trim(),
-        description:  form.description || null,
-        url:          form.url  || null,
-        source:       form.source || null,
-      })
+      if (editJob) {
+        await updateJob.mutateAsync({ id: editJob.id, ...payload })
+      } else {
+        await createJob.mutateAsync(payload)
+      }
       setAddModalOpen(false)
+      setEditJob(null)
     } catch (err) {
       setErrors({ submit: err.response?.data?.error ?? err.message })
     }
   }
 
-  function handleApplyWithCv({ cvVersionId, appId, matchScore }) {
+  function handleApplyWithCv({ cvVersionId, matchScore }) {
     setAnalysisModalOpen(false)
     setCvPreviewCvVersionId(cvVersionId)
-    setCvPreviewAppId(appId ?? null)
     setCvPreviewMatchScore(matchScore ?? null)
     setCvPreviewOpen(true)
   }
@@ -930,6 +949,20 @@ export default function Jobs() {
                   </button>
                 )}
                 <button
+                  onClick={() => openEdit(job)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '7px 12px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-muted)', cursor: 'pointer',
+                  }}
+                >
+                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  </svg>
+                  Edit
+                </button>
+                <button
                   onClick={() => askDelete(job)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 5,
@@ -1091,6 +1124,17 @@ export default function Jobs() {
                           </button>
                         )}
 
+                        {/* Edit */}
+                        <TableIconBtn
+                          onClick={() => openEdit(job)}
+                          title="Edit job"
+                          accentColor="var(--info)"
+                        >
+                          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                          </svg>
+                        </TableIconBtn>
+
                         {/* Delete */}
                         <TableIconBtn
                           onClick={() => askDelete(job)}
@@ -1111,8 +1155,8 @@ export default function Jobs() {
         )}
       </div>
 
-      {/* Add Job Modal */}
-      <Modal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add Job">
+      {/* Add / Edit Job Modal */}
+      <Modal isOpen={addModalOpen} onClose={() => { setAddModalOpen(false); setEditJob(null) }} title={editJob ? 'Edit Job' : 'Add Job'}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {errors.submit && (
             <div style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--danger-bg)', border: '1px solid rgba(239,68,68,0.25)', fontSize: 12, color: 'var(--danger)' }}>
@@ -1179,9 +1223,9 @@ export default function Jobs() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-            <BtnGhost onClick={() => setAddModalOpen(false)} type="button">Cancel</BtnGhost>
-            <BtnPrimary type="submit" disabled={createJob.isPending}>
-              {createJob.isPending ? 'Saving…' : 'Add Job'}
+            <BtnGhost onClick={() => { setAddModalOpen(false); setEditJob(null) }} type="button">Cancel</BtnGhost>
+            <BtnPrimary type="submit" disabled={createJob.isPending || updateJob.isPending}>
+              {(createJob.isPending || updateJob.isPending) ? 'Saving…' : editJob ? 'Save Changes' : 'Add Job'}
             </BtnPrimary>
           </div>
         </form>
@@ -1210,7 +1254,6 @@ export default function Jobs() {
         cvVersionId={cvPreviewCvVersionId}
         jobTitle={analysisJob?.title}
         companyName={analysisJob?.company_name}
-        applicationId={cvPreviewAppId}
         jobUrl={analysisJob?.url}
         matchScore={cvPreviewMatchScore}
       />

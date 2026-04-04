@@ -6,7 +6,7 @@ import { checkCredits } from '../middleware/checkCredits.js'
 const router = Router()
 
 // POST /api/ai/analyze-job
-router.post('/analyze-job', checkCredits('ai'), async (req, res, next) => {
+router.post('/analyze-job', async (req, res, next) => {
   try {
     const { job_id } = req.body
     if (!job_id) return res.status(400).json({ data: null, error: 'job_id is required', message: 'job_id is required' })

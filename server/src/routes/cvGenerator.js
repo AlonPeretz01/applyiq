@@ -35,13 +35,14 @@ router.post('/generate', checkCredits('cv'), async (req, res, next) => {
 
 router.post('/download', async (req, res, next) => {
   try {
-    const { html, jobId } = req.body
+    const { html, jobId, returnUrl } = req.body
     if (!html) return res.status(400).json({ data: null, error: 'html is required', message: 'Missing HTML content' })
 
-    console.log('[cv-generator/download] generating PDF, html length:', html.length)
+    console.log('[cv-generator/download] generating PDF, html length:', html.length, 'returnUrl:', !!returnUrl)
     const pdfBuffer = await generatePdf(html)
 
-    // ── Try to upload to Supabase Storage (non-blocking — failure still serves PDF) ──
+    // ── Upload to Supabase Storage ──────────────────────────────────────────────
+    let savedUrl = null
     if (jobId) {
       try {
         const userId = req.user.id
@@ -56,21 +57,30 @@ router.post('/download', async (req, res, next) => {
           const { data: urlData } = supabaseAdmin.storage
             .from('cv-files')
             .getPublicUrl(fileName)
+          savedUrl = urlData.publicUrl
+          console.log('[cv-generator/download] CV saved to storage:', savedUrl)
 
-          // Save URL + HTML to the application for this job (best-effort)
-          await prisma.application.updateMany({
-            where: { job_id: jobId, user_id: userId },
-            data: { generated_cv_url: urlData.publicUrl, generated_cv_html: html },
-          })
-          console.log('[cv-generator/download] CV saved to storage:', urlData.publicUrl)
+          // If not returnUrl mode, also update any existing application (legacy path)
+          if (!returnUrl) {
+            await prisma.application.updateMany({
+              where: { job_id: jobId, user_id: userId },
+              data: { generated_cv_url: savedUrl, generated_cv_html: html },
+            })
+          }
         }
       } catch (storageErr) {
         console.warn('[cv-generator/download] storage/db save failed (non-fatal):', storageErr.message)
       }
     }
 
+    // ── returnUrl mode: return JSON with the storage URL ───────────────────────
+    if (returnUrl) {
+      return res.json({ data: { url: savedUrl }, error: null, message: savedUrl ? 'PDF saved to storage' : 'PDF generated but storage upload failed' })
+    }
+
+    // ── Default mode: return binary PDF ───────────────────────────────────────
     res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', 'attachment; filename="cv_applyiq.pdf"')
+    res.setHeader('Content-Disposition', 'attachment; filename="cv_hiretrack.pdf"')
     res.setHeader('Content-Length', pdfBuffer.length)
     res.end(pdfBuffer)
   } catch (err) { next(err) }

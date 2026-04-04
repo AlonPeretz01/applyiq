@@ -32,9 +32,11 @@ export default function App() {
   const { user } = useAuth()
 
   // Initialised once from localStorage — never flashes if already complete
-  const [showOnboarding, setShowOnboarding] = useState(
-    () => !localStorage.getItem(ONBOARDING_KEY)
-  )
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const stored = localStorage.getItem(ONBOARDING_KEY)
+    console.log('[onboarding] key:', ONBOARDING_KEY, '| stored:', stored, '| showOnboarding:', !stored)
+    return !stored
+  })
 
   function handleOnboardingComplete() {
     localStorage.setItem(ONBOARDING_KEY, 'true')

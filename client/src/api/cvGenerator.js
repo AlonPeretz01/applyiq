@@ -10,6 +10,11 @@ export const cvGeneratorApi = {
   download: (html, jobId) =>
     api.post('/cv-generator/download', { html, jobId }, { responseType: 'arraybuffer' }),
 
+  // POST /api/cv-generator/download (returnUrl mode)
+  // Generates PDF, saves to Supabase storage, returns { data: { url } } — no binary download
+  save: (html, jobId) =>
+    api.post('/cv-generator/download', { html, jobId, returnUrl: true }),
+
   // GET /api/cv-generator/download/:applicationId
   getCvForApplication: (applicationId) =>
     api.get(`/cv-generator/download/${applicationId}`),

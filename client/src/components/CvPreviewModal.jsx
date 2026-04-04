@@ -3,93 +3,113 @@ import { cvGeneratorApi } from '../api/cvGenerator.js'
 import { applicationsApi } from '../api/applications.js'
 import Modal from './Modal.jsx'
 
-// ─── States ───────────────────────────────────────────────────────────────────
-// idle     → show "Generate" button
-// loading  → spinner + "Claude is tailoring your CV..."
-// preview  → iframe + Download / Close buttons
-// error    → error message + retry
+// ─── Phases ───────────────────────────────────────────────────────────────────
+// idle      → show "Generate" button
+// loading   → Claude generating CV HTML
+// saving    → PDF being rendered + saved to Supabase storage + application created
+// preview   → iframe + Download / Mark as Applied buttons
+// error     → error message + retry
 
-// matchScore, jobId, cvVersionId are used to create the application after download.
-// If applicationId is passed directly, we skip auto-creation (legacy path).
-export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jobTitle, companyName, applicationId: externalApplicationId, jobUrl, matchScore }) {
-  const [phase, setPhase]         = useState('idle')
-  const [html, setHtml]           = useState(null)
-  const [errorMsg, setErrorMsg]   = useState(null)
-  const [downloading, setDownloading] = useState(false)
+export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jobTitle, companyName, jobUrl, matchScore }) {
+  const [phase, setPhase]                   = useState('idle')
+  const [loadingMsg, setLoadingMsg]         = useState('')
+  const [html, setHtml]                     = useState(null)
+  const [savedUrl, setSavedUrl]             = useState(null)     // Supabase storage URL
+  const [savedAppId, setSavedAppId]         = useState(null)     // created application id
+  const [errorMsg, setErrorMsg]             = useState(null)
   const [markingApplied, setMarkingApplied] = useState(false)
   const [markedApplied, setMarkedApplied]   = useState(false)
-  // Internal applicationId — set after PDF is downloaded when no externalApplicationId was given
-  const [createdAppId, setCreatedAppId] = useState(null)
-  const applicationId = externalApplicationId ?? createdAppId
 
-  // Reset state when modal opens fresh
   function handleClose() {
     setPhase('idle')
     setHtml(null)
+    setSavedUrl(null)
+    setSavedAppId(null)
     setErrorMsg(null)
     setMarkedApplied(false)
-    setCreatedAppId(null)
     onClose()
   }
 
   async function handleGenerate() {
     setPhase('loading')
+    setLoadingMsg('Claude is tailoring your CV…')
     setErrorMsg(null)
+
+    let generatedHtml
     try {
       const res = await cvGeneratorApi.generate(jobId, cvVersionId)
-      setHtml(res.data.html)
-      setPhase('preview')
+      generatedHtml = res.data.html
+      setHtml(generatedHtml)
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to generate CV')
+      setErrorMsg(err.response?.data?.error || err.message || 'Failed to generate CV')
       setPhase('error')
+      return
     }
+
+    // ── Auto-save: render PDF → Supabase storage → create application ──────────
+    setPhase('saving')
+    setLoadingMsg('Saving your CV…')
+
+    let url = null
+    let appId = null
+
+    try {
+      const saveRes = await cvGeneratorApi.save(generatedHtml, jobId)
+      url = saveRes.data?.url ?? null
+    } catch (saveErr) {
+      console.warn('[CvPreviewModal] PDF save failed (non-fatal):', saveErr.message)
+      // Non-fatal — we still show the preview, just without a stored URL
+    }
+
+    if (jobId && cvVersionId) {
+      try {
+        const appRes = await applicationsApi.create({
+          job_id:            jobId,
+          cv_version_id:     cvVersionId,
+          match_score:       matchScore != null ? Math.round(matchScore) : null,
+          generated_cv_url:  url  ?? null,
+          generated_cv_html: generatedHtml,
+        })
+        appId = appRes.data?.id ?? null
+      } catch (appErr) {
+        console.warn('[CvPreviewModal] application create failed (non-fatal):', appErr.message)
+      }
+    }
+
+    setSavedUrl(url)
+    setSavedAppId(appId)
+    setPhase('preview')
   }
 
   async function handleDownload() {
+    if (savedUrl) {
+      // PDF already in storage — open directly
+      window.open(savedUrl, '_blank')
+      return
+    }
+    // Fallback: generate on-the-fly if storage URL is missing
     if (!html) return
-    setDownloading(true)
     try {
       const arrayBuffer = await cvGeneratorApi.download(html, jobId)
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
-      const url = URL.createObjectURL(blob)
+      const blobUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
-      a.download = `cv_${companyName?.replace(/\s+/g, '_') ?? 'applyiq'}_${Date.now()}.pdf`
+      a.href = blobUrl
+      a.download = `cv_${companyName?.replace(/\s+/g, '_') ?? 'hiretrack'}_${Date.now()}.pdf`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-
-      // If no applicationId was passed in, create the application now that the PDF was downloaded
-      if (!externalApplicationId && !createdAppId && jobId && cvVersionId) {
-        try {
-          const res = await applicationsApi.create({
-            job_id: jobId,
-            cv_version_id: cvVersionId,
-            match_score: matchScore != null ? Math.round(matchScore) : null,
-            notes: null,
-          })
-          const newAppId = res.data?.id
-          if (newAppId) {
-            await applicationsApi.updateStatus(newAppId, 'READY', null)
-            setCreatedAppId(newAppId)
-          }
-        } catch {
-          // Non-fatal — application creation failed, but PDF was downloaded
-        }
-      }
+      URL.revokeObjectURL(blobUrl)
     } catch (err) {
       setErrorMsg(err.message || 'Failed to download PDF')
-    } finally {
-      setDownloading(false)
     }
   }
 
   async function handleMarkApplied() {
-    if (!applicationId) return
+    if (!savedAppId) return
     setMarkingApplied(true)
     try {
-      await applicationsApi.updateStatus(applicationId, 'APPLIED', null)
+      await applicationsApi.updateStatus(savedAppId, 'APPLIED', null)
       setMarkedApplied(true)
     } catch (err) {
       setErrorMsg(err.message || 'Failed to update status')
@@ -126,7 +146,7 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
             </div>
 
             <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
-              CV is tailored to highlight skills relevant to this role
+              The tailored CV will be saved automatically to your application
             </p>
 
             <button
@@ -149,8 +169,8 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
           </div>
         )}
 
-        {/* ── loading ── */}
-        {phase === 'loading' && (
+        {/* ── loading / saving ── */}
+        {(phase === 'loading' || phase === 'saving') && (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: 16, padding: '48px 0',
@@ -162,10 +182,10 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
             }} />
             <div style={{ textAlign: 'center' }}>
               <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                Claude is tailoring your CV…
+                {loadingMsg}
               </p>
               <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-                This usually takes 15–30 seconds
+                {phase === 'loading' ? 'This usually takes 15–30 seconds' : 'Saving to your account…'}
               </p>
             </div>
           </div>
@@ -174,9 +194,22 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
         {/* ── preview ── */}
         {phase === 'preview' && html && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>
-              CV is tailored to highlight skills relevant to this role
-            </p>
+
+            {/* Saved banner */}
+            {savedAppId && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '9px 14px', borderRadius: 8,
+                background: 'rgba(34,197,94,0.06)',
+                border: '1px solid rgba(34,197,94,0.2)',
+                fontSize: 12, color: 'var(--success)',
+              }}>
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                Application created and CV saved to your account
+              </div>
+            )}
 
             <iframe
               srcDoc={html}
@@ -192,32 +225,20 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={handleDownload}
-                disabled={downloading}
                 style={{
                   flex: 1, padding: '9px 0', borderRadius: 8, fontSize: 13, fontWeight: 500,
-                  background: downloading ? 'var(--bg-elevated)' : 'var(--accent-primary)',
-                  border: 'none', color: '#fff',
-                  cursor: downloading ? 'not-allowed' : 'pointer',
-                  opacity: downloading ? 0.6 : 1,
+                  background: 'var(--accent-primary)', border: 'none', color: '#fff',
+                  cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                   transition: 'all 0.2s',
                 }}
-                onMouseEnter={e => { if (!downloading) { e.currentTarget.style.filter = 'brightness(1.12)'; e.currentTarget.style.boxShadow = '0 0 20px var(--accent-glow)' } }}
+                onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.12)'; e.currentTarget.style.boxShadow = '0 0 20px var(--accent-glow)' }}
                 onMouseLeave={e => { e.currentTarget.style.filter = 'none'; e.currentTarget.style.boxShadow = 'none' }}
               >
-                {downloading ? (
-                  <>
-                    <div className="anim-spin" style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }} />
-                    Generating PDF…
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                    </svg>
-                    Download PDF
-                  </>
-                )}
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Download PDF
               </button>
 
               <button
@@ -234,8 +255,8 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
               </button>
             </div>
 
-            {/* Mark as Applied — only shown if we have an applicationId */}
-            {applicationId && !markedApplied && (
+            {/* Mark as Applied — only once we have an application */}
+            {savedAppId && !markedApplied && (
               <button
                 onClick={handleMarkApplied}
                 disabled={markingApplied}
@@ -248,8 +269,8 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                   transition: 'all 0.15s',
                 }}
-                onMouseEnter={e => { if (!markingApplied) { e.currentTarget.style.background = 'rgba(34,197,94,0.16)' } }}
-                onMouseLeave={e => { if (!markingApplied) { e.currentTarget.style.background = 'rgba(34,197,94,0.1)' } }}
+                onMouseEnter={e => { if (!markingApplied) e.currentTarget.style.background = 'rgba(34,197,94,0.16)' }}
+                onMouseLeave={e => { if (!markingApplied) e.currentTarget.style.background = 'rgba(34,197,94,0.1)' }}
               >
                 {markingApplied ? (
                   <>
@@ -296,6 +317,11 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
                   </button>
                 )}
               </div>
+            )}
+
+            {/* Inline error (non-fatal — e.g. mark applied failed) */}
+            {errorMsg && phase === 'preview' && (
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--danger)', textAlign: 'center' }}>{errorMsg}</p>
             )}
           </div>
         )}
