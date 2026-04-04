@@ -21,6 +21,63 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
 
   if (!isOpen) return null
 
+  if (isMobile) {
+    return (
+      <div
+        className="anim-slide-up"
+        role="dialog"
+        aria-modal="true"
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 50,
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'var(--bg-surface)',
+          overflowY: 'auto',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+        }}
+      >
+        {/* Sticky header — always visible at top */}
+        <div
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 20px',
+            background: 'var(--bg-surface)',
+            borderBottom: '1px solid var(--border-subtle)',
+            minHeight: 60,
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', paddingRight: 12 }}>
+            {title}
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              flexShrink: 0,
+              width: 32, height: 32, borderRadius: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
+              color: 'var(--text-muted)', cursor: 'pointer',
+            }}
+          >
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 20px 40px', flex: 1 }}>{children}</div>
+      </div>
+    )
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
@@ -36,19 +93,17 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
 
       {/* Panel */}
       <div
-        className={`anim-slide-up relative z-10 w-full${isMobile ? '' : ' mx-4'}`}
+        className="anim-slide-up relative z-10 w-full mx-4"
         style={{
-          maxWidth: isMobile ? '100%' : maxWidth,
-          maxHeight: isMobile ? '100vh' : '90vh',
-          height: isMobile ? '100vh' : undefined,
+          maxWidth,
+          maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--bg-surface)',
-          border: isMobile ? 'none' : '1px solid var(--border-default)',
-          borderRadius: isMobile ? 0 : 16,
+          border: '1px solid var(--border-default)',
+          borderRadius: 16,
           boxShadow: '0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,111,247,0.06)',
           overflow: 'hidden',
-          paddingTop: isMobile ? 20 : 0,
         }}
       >
         {/* Header */}
