@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useJobs, useCreateJob, useDeleteJob } from '../hooks/useJobs.js'
 import { useCvVersions } from '../hooks/useCvVersions.js'
-import { useCreateApplication } from '../hooks/useApplications.js'
+import { useApplications, useCreateApplication } from '../hooks/useApplications.js'
 import { applicationsApi } from '../api/applications.js'
 import { useAiAnalysis, getSavedAnalysis } from '../hooks/useAiAnalysis.js'
 import { useToast } from '../context/ToastContext.jsx'
@@ -146,11 +146,12 @@ function SectionLabel({ children }) {
 }
 
 // ─── Analysis Modal ───────────────────────────────────────────────────────────
-function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onReanalyze, reanalyzing, onApplyWithCv }) {
+function AnalysisModal({ isOpen, onClose, job, result, cvVersions, applications, savedAt, onReanalyze, reanalyzing, onApplyWithCv }) {
   const createApp = useCreateApplication()
   const toast     = useToast()
-  const [applyMode, setApplyMode] = useState(null) // null | 'existing' | 'tailored'
-  const [applied, setApplied]     = useState(false)
+  const [applyMode, setApplyMode]         = useState(null) // null | 'existing' | 'tailored'
+  const [applied, setApplied]             = useState(false)
+  const [conflictApp, setConflictApp]     = useState(null) // existing application for this job
 
   if (!isOpen || !result || !job) return null
 
@@ -159,24 +160,81 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
     ? cvVersions.find((cv) => cv.id === recommendation.recommended_cv_id)
     : null
 
+  async function applyWithAppId(appId, isNew) {
+    if (isNew) {
+      await applicationsApi.updateStatus(appId, 'APPLIED', null)
+    }
+    console.log('[applyExisting] recommendedCv:', recCv)
+    console.log('[applyExisting] file_url:', recCv?.file_url)
+    if (recCv?.file_url) {
+      console.log('[applyExisting] patching application:', appId, 'with original_cv_url:', recCv.file_url)
+      try {
+        await applicationsApi.update(appId, { original_cv_url: recCv.file_url })
+        console.log('[applyExisting] patch successful')
+      } catch (updateErr) {
+        console.error('[applyExisting] patch failed:', updateErr)
+      }
+    }
+    setApplied(true)
+    setConflictApp(null)
+    toast.success(isNew ? 'Application created! Check Applications to track it.' : 'Existing application updated!')
+  }
+
   async function handleApplyExisting() {
     if (!recommendation?.recommended_cv_id) return
+
+    // Check for existing application for this job
+    const existing = applications?.find(a => a.job_id === job.id)
+    if (existing) {
+      setConflictApp(existing)
+      return
+    }
+
     setApplyMode('existing')
     try {
+      console.log('[applyExisting] creating application...')
       const app = await createApp.mutateAsync({
         job_id: job.id,
         cv_version_id: recommendation.recommended_cv_id,
         match_score: recommendation.match_score != null ? Math.round(recommendation.match_score) : null,
         notes: null,
       })
-      // Immediately mark as APPLIED
-      await applicationsApi.updateStatus(app.data.id, 'APPLIED', null)
-      // If the recommended CV has a file, save it as the CV URL on the application
-      if (recCv?.file_url) {
-        try { await applicationsApi.update(app.data.id, { generated_cv_url: recCv.file_url }) } catch (_) {}
-      }
-      setApplied(true)
-      toast.success('Application created! Check Applications to track it.')
+      console.log('[applyExisting] app created:', app)
+      await applyWithAppId(app.data.id, true)
+    } catch (err) {
+      toast.error(err.message || 'Failed to create application')
+    } finally {
+      setApplyMode(null)
+    }
+  }
+
+  async function handleUpdateExisting() {
+    if (!conflictApp) return
+    setApplyMode('existing')
+    setConflictApp(null)
+    try {
+      await applyWithAppId(conflictApp.id, false)
+    } catch (err) {
+      toast.error(err.message || 'Failed to update application')
+    } finally {
+      setApplyMode(null)
+    }
+  }
+
+  async function handleCreateNew() {
+    if (!recommendation?.recommended_cv_id) return
+    setConflictApp(null)
+    setApplyMode('existing')
+    try {
+      console.log('[applyExisting] creating new application (conflict override)...')
+      const app = await createApp.mutateAsync({
+        job_id: job.id,
+        cv_version_id: recommendation.recommended_cv_id,
+        match_score: recommendation.match_score != null ? Math.round(recommendation.match_score) : null,
+        notes: null,
+      })
+      console.log('[applyExisting] app created:', app)
+      await applyWithAppId(app.data.id, true)
     } catch (err) {
       toast.error(err.message || 'Failed to create application')
     } finally {
@@ -437,8 +495,67 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, savedAt, onRe
         })()}
       </div>
 
+      {/* ── Conflict dialog — existing application found ── */}
+      {conflictApp && (
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
+          <div style={{
+            border: '1px solid rgba(245,158,11,0.35)',
+            borderRadius: 12, overflow: 'hidden',
+            background: 'rgba(245,158,11,0.04)',
+          }}>
+            <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid rgba(245,158,11,0.2)' }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--warning)' }}>
+                Application already exists
+              </p>
+            </div>
+            <div style={{ padding: '12px 16px' }}>
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                You already have an application for this job (status: <strong style={{ color: 'var(--text-primary)' }}>{conflictApp.status}</strong>).
+                Do you want to update it or create a separate one?
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleUpdateExisting}
+                  style={{
+                    flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 500,
+                    background: 'var(--accent-primary)', border: 'none', color: '#fff', cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.12)' }}
+                  onMouseLeave={e => { e.currentTarget.style.filter = 'none' }}
+                >
+                  Update existing
+                </button>
+                <button
+                  onClick={handleCreateNew}
+                  style={{
+                    flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 500,
+                    background: 'transparent', border: '1px solid var(--border-default)',
+                    color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-active)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+                >
+                  Create new
+                </button>
+                <button
+                  onClick={() => setConflictApp(null)}
+                  style={{
+                    padding: '8px 12px', borderRadius: 8, fontSize: 12,
+                    background: 'transparent', border: 'none',
+                    color: 'var(--text-muted)', cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Ready to apply? choice panel — outside scroll so always visible ── */}
-      {recommendation?.recommended_cv_id && (
+      {recommendation?.recommended_cv_id && !conflictApp && (
         <div style={{ marginTop: 16, borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
           {!applied ? (
             <div style={{ border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
@@ -549,6 +666,7 @@ function TableIconBtn({ onClick, title, disabled, accentColor, children }) {
 export default function Jobs() {
   const { data: jobs = [], isLoading } = useJobs()
   const { data: cvVersions = [] }      = useCvVersions()
+  const { data: applications = [] }    = useApplications()
   const createJob   = useCreateJob()
   const deleteJob   = useDeleteJob()
   const aiAnalysis  = useAiAnalysis()
@@ -1085,6 +1203,7 @@ export default function Jobs() {
         job={analysisJob}
         result={analysisResult}
         cvVersions={cvVersions}
+        applications={applications}
         savedAt={analysisSavedAt}
         onReanalyze={() => handleReanalyze(analysisJob)}
         reanalyzing={reanalyzingId === analysisJob?.id}

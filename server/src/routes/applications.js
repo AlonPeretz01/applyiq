@@ -53,7 +53,7 @@ router.get('/:id', async (req, res, next) => {
 // ─── POST /api/applications ───────────────────────────────────────────────────
 router.post('/', async (req, res, next) => {
   try {
-    const { job_id, cv_version_id, cover_letter_id, notes, match_score } = req.body
+    const { job_id, cv_version_id, cover_letter_id, notes, match_score, status, applied_at, original_cv_url } = req.body
     console.log('[POST /applications] body:', req.body)
     if (!job_id) {
       return res.status(400).json({ data: null, error: 'job_id is required', message: 'job_id is required' })
@@ -64,16 +64,20 @@ router.post('/', async (req, res, next) => {
     if (match_score !== undefined && match_score !== null && (typeof match_score !== 'number' || match_score < 0 || match_score > 100)) {
       return res.status(400).json({ data: null, error: 'match_score must be a number between 0 and 100', message: 'match_score must be a number between 0 and 100' })
     }
+    const initialStatus = (status && VALID_STATUSES.includes(status)) ? status : 'DRAFT'
     const application = await prisma.application.create({
       data: {
-        user_id:         req.user.id,
+        user_id:          req.user.id,
         job_id,
         cv_version_id,
-        cover_letter_id: cover_letter_id ?? null,
-        notes:           notes ?? null,
-        match_score:     match_score ?? null,
+        cover_letter_id:  cover_letter_id ?? null,
+        notes:            notes ?? null,
+        match_score:      match_score ?? null,
+        status:           initialStatus,
+        original_cv_url:  original_cv_url ?? null,
+        ...(applied_at && { applied_at: new Date(applied_at) }),
         status_history: {
-          create: { new_status: 'DRAFT', note: 'Application created' },
+          create: { new_status: initialStatus, note: 'Application created' },
         },
       },
       include: applicationInclude,
@@ -137,7 +141,8 @@ router.put('/:id', async (req, res, next) => {
     if (!existing || existing.user_id !== req.user.id) {
       return res.status(404).json({ data: null, error: 'Application not found', message: 'Application not found' })
     }
-    const { cv_version_id, cover_letter_id, notes, match_score, generated_cv_url } = req.body
+    const { cv_version_id, cover_letter_id, notes, match_score, generated_cv_url, original_cv_url } = req.body
+    console.log('[PUT /applications] updating:', req.params.id, 'with:', { generated_cv_url, original_cv_url })
     if (match_score !== undefined && match_score !== null) {
       if (typeof match_score !== 'number' || match_score < 0 || match_score > 100) {
         return res.status(400).json({ data: null, error: 'match_score must be a number between 0 and 100', message: 'match_score must be a number between 0 and 100' })
@@ -151,6 +156,7 @@ router.put('/:id', async (req, res, next) => {
         ...(notes !== undefined && { notes }),
         ...(match_score !== undefined && { match_score }),
         ...(generated_cv_url !== undefined && { generated_cv_url }),
+        ...(original_cv_url !== undefined && { original_cv_url }),
       },
       include: applicationInclude,
     })

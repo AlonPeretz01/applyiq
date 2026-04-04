@@ -88,6 +88,7 @@ model Application {
   status          ApplicationStatus @default(DRAFT)
   match_score        Float?
   notes              String?  @db.Text
+  original_cv_url    String?
   generated_cv_url   String?
   generated_cv_html  String?  @db.Text
   updated_at         DateTime @updatedAt

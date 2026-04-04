@@ -10,7 +10,8 @@ import { useCvVersions } from '../hooks/useCvVersions.js'
 import Modal, { ConfirmModal } from '../components/Modal.jsx'
 import StatusBadge, { ALL_STATUSES, STATUS_META } from '../components/StatusBadge.jsx'
 
-const EMPTY_FORM = { job_id: '', cv_version_id: '', match_score: '', notes: '' }
+const TODAY = new Date().toISOString().split('T')[0]
+const EMPTY_FORM = { job_id: '', cv_version_id: '', status: 'DRAFT', match_score: '', notes: '', applied_at: TODAY }
 
 function formatDate(str) {
   if (!str) return '—'
@@ -197,11 +198,15 @@ export default function Applications() {
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
     try {
+      const selectedCv = cvVersions.find(cv => cv.id === form.cv_version_id)
       const payload = {
         job_id: form.job_id,
         cv_version_id: form.cv_version_id,
+        status: form.status || 'DRAFT',
         match_score: form.match_score !== '' ? Number(form.match_score) : null,
         notes: form.notes || null,
+        original_cv_url: selectedCv?.file_url || null,
+        applied_at: form.applied_at ? new Date(form.applied_at).toISOString() : new Date().toISOString(),
       }
       console.log('[New Application] submitting:', payload)
       await createApp.mutateAsync(payload)
@@ -318,7 +323,7 @@ export default function Applications() {
                             </span>
                           )}
                         </span>
-                        {app.generated_cv_url && (
+                        {(app.original_cv_url || app.generated_cv_url) && (
                           <span style={{
                             fontSize: 10, fontWeight: 500,
                             color: 'var(--success)',
@@ -361,13 +366,13 @@ export default function Applications() {
                       </span>
                     </td>
 
-                    {/* Actions: download CV + delete */}
+                    {/* Actions: download CV(s) + delete */}
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                        {app.generated_cv_url && (
+                        {app.original_cv_url && (
                           <button
-                            onClick={() => window.open(app.generated_cv_url, '_blank')}
-                            title="Download tailored CV"
+                            onClick={() => window.open(app.original_cv_url, '_blank')}
+                            title="Download original CV"
                             style={{
                               width: 30, height: 30, borderRadius: 8,
                               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -376,9 +381,9 @@ export default function Applications() {
                               color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s',
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.color = 'var(--success)'
-                              e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)'
-                              e.currentTarget.style.background = 'rgba(34,197,94,0.08)'
+                              e.currentTarget.style.color = 'var(--info)'
+                              e.currentTarget.style.borderColor = 'rgba(96,165,250,0.5)'
+                              e.currentTarget.style.background = 'rgba(96,165,250,0.08)'
                             }}
                             onMouseLeave={e => {
                               e.currentTarget.style.color = 'var(--text-muted)'
@@ -387,7 +392,34 @@ export default function Applications() {
                             }}
                           >
                             <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                          </button>
+                        )}
+                        {app.generated_cv_url && (
+                          <button
+                            onClick={() => window.open(app.generated_cv_url, '_blank')}
+                            title="Download AI-tailored CV"
+                            style={{
+                              width: 30, height: 30, borderRadius: 8,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              background: 'var(--bg-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                              color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.color = 'var(--accent-primary)'
+                              e.currentTarget.style.borderColor = 'rgba(124,111,247,0.5)'
+                              e.currentTarget.style.background = 'rgba(124,111,247,0.08)'
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.color = 'var(--text-muted)'
+                              e.currentTarget.style.borderColor = 'var(--border-subtle)'
+                              e.currentTarget.style.background = 'var(--bg-elevated)'
+                            }}
+                          >
+                            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                             </svg>
                           </button>
                         )}
@@ -457,6 +489,26 @@ export default function Applications() {
               {cvVersions.map(cv => <option key={cv.id} value={cv.id}>{cv.name} ({cv.target_type})</option>)}
             </select>
             {cvVersions.length === 0 && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>No CV versions yet — add one in CV Versions first.</p>}
+          </FormField>
+
+          <FormField label="Status">
+            <select name="status" value={form.status} onChange={handleChange}
+              style={{ ...inputStyle(false), color: 'var(--text-primary)', cursor: 'pointer' }}
+              onFocus={e => { e.target.style.borderColor = 'var(--border-active)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border-subtle)'; e.target.style.boxShadow = 'none' }}
+            >
+              {ALL_STATUSES.map(s => (
+                <option key={s} value={s}>{STATUS_META[s]?.label ?? s}</option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="Date Applied" hint="optional">
+            <input name="applied_at" type="date" value={form.applied_at} onChange={handleChange}
+              style={inputStyle(false)}
+              onFocus={e => { e.target.style.borderColor = 'var(--border-active)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)' }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border-subtle)'; e.target.style.boxShadow = 'none' }}
+            />
           </FormField>
 
           <FormField label="Match Score" hint="0–100, optional" error={errors.match_score}>

@@ -34,6 +34,7 @@ router.get('/', async (req, res, next) => {
       where: { user_id: req.user.id },
       orderBy: { created_at: 'desc' },
     })
+    console.log('[cv-versions/get] returning', versions.length, 'versions, file_urls:', versions.map(v => ({ id: v.id, file_url: v.file_url })))
     res.json({ data: versions, error: null, message: 'CV versions retrieved successfully' })
   } catch (err) {
     next(err)
@@ -92,17 +93,17 @@ router.post('/', upload.single('cv_file'), async (req, res, next) => {
 
       // 2. Upload original file to Supabase Storage (non-fatal)
       const ext = req.file.mimetype === 'application/pdf' ? 'pdf' : 'docx'
-      const fileName = `cv_${req.user.id}_${Date.now()}.${ext}`
-      console.log('[cv-versions/post] uploading to Supabase Storage as:', fileName)
+      const fileName = `original_${req.user.id}_${Date.now()}.${ext}`
+      console.log('[cvVersions] uploading file:', fileName, 'size:', req.file.buffer.length, 'type:', req.file.mimetype)
       try {
         const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-          .from('cv-files')
-          .upload(fileName, req.file.buffer, { contentType: req.file.mimetype })
-        console.log('[cv-versions/post] Supabase upload — data:', uploadData, '| error:', uploadError)
+          .from('cv-originals')
+          .upload(fileName, req.file.buffer, { contentType: req.file.mimetype, upsert: false, duplex: 'half' })
+        console.log('[cvVersions] upload result:', uploadData, uploadError)
         if (uploadError) {
           console.error('[cv-versions/post] storage upload failed:', uploadError.message)
         } else {
-          const { data: urlData } = supabaseAdmin.storage.from('cv-files').getPublicUrl(fileName)
+          const { data: urlData } = supabaseAdmin.storage.from('cv-originals').getPublicUrl(fileName)
           fileUrl = urlData.publicUrl
           console.log('[cv-versions/post] public URL:', fileUrl)
         }
@@ -168,15 +169,16 @@ router.put('/:id', upload.single('cv_file'), async (req, res, next) => {
         console.error('[cv-versions/put] text extraction FAILED:', parseErr.message)
       }
       const ext = req.file.mimetype === 'application/pdf' ? 'pdf' : 'docx'
-      const fileName = `cv_${req.user.id}_${Date.now()}.${ext}`
+      const fileName = `original_${req.user.id}_${Date.now()}.${ext}`
       try {
-        const { error: uploadError } = await supabaseAdmin.storage
-          .from('cv-files')
-          .upload(fileName, req.file.buffer, { contentType: req.file.mimetype })
+        const { data: uploadData2, error: uploadError } = await supabaseAdmin.storage
+          .from('cv-originals')
+          .upload(fileName, req.file.buffer, { contentType: req.file.mimetype, upsert: false, duplex: 'half' })
+        console.log('[cvVersions] upload result:', uploadData2, uploadError)
         if (uploadError) {
           console.warn('[cv-versions/put] storage upload failed:', uploadError.message)
         } else {
-          const { data: urlData } = supabaseAdmin.storage.from('cv-files').getPublicUrl(fileName)
+          const { data: urlData } = supabaseAdmin.storage.from('cv-originals').getPublicUrl(fileName)
           updateData.file_url = urlData.publicUrl
         }
       } catch (storageErr) {

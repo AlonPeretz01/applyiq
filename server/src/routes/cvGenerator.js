@@ -44,7 +44,7 @@ router.post('/download', async (req, res, next) => {
     if (jobId) {
       try {
         const userId = req.user.id
-        const fileName = `cv_${userId}_${jobId}_${Date.now()}.pdf`
+        const fileName = `ai_${userId}_${jobId}_${Date.now()}.pdf`
         const { error: uploadError } = await supabaseAdmin.storage
           .from('cv-files')
           .upload(fileName, pdfBuffer, { contentType: 'application/pdf' })
