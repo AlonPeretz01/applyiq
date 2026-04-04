@@ -52,7 +52,7 @@ function SlideWelcome() {
       <div style={{ fontSize: 60, lineHeight: 1, marginBottom: 22 }}>🚀</div>
       <h2 style={{ ...H2, fontSize: 26, marginBottom: 14 }}>Welcome to HireTrack</h2>
       <p style={{ ...SUB, fontSize: 15, maxWidth: 360, marginInline: 'auto' }}>
-        Your AI-powered job application tracker. Let&apos;s show you how it works.
+        Your AI-powered job application tracker. Track smarter, apply better.
       </p>
     </div>
   )
@@ -64,7 +64,7 @@ function SlideAddJob() {
     <div>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
         <h2 style={H2}>Add jobs you&apos;re interested in</h2>
-        <p style={SUB}>Paste a job description from LinkedIn or any job board.</p>
+        <p style={SUB}>Paste a job description from LinkedIn or any job board. Add the URL to apply directly later.</p>
       </div>
 
       <div style={MOCK_CARD}>
@@ -79,11 +79,11 @@ function SlideAddJob() {
           </div>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 10 }}>
           <div style={SECTION_LABEL}>Job Description</div>
           <div style={{
             ...MOCK_INPUT,
-            height: 68,
+            height: 56,
             alignItems: 'flex-start',
             paddingTop: 10,
             lineHeight: 1.55,
@@ -93,12 +93,17 @@ function SlideAddJob() {
           </div>
         </div>
 
+        <div style={{ marginBottom: 16 }}>
+          <div style={SECTION_LABEL}>Job URL</div>
+          <div style={{ ...MOCK_INPUT, color: 'var(--text-muted)' }}>https://stripe.com/jobs/…</div>
+        </div>
+
         {/* Button row with pointing arrow */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#7C6FF7', fontSize: 12, fontWeight: 500 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--accent-primary)', fontSize: 12, fontWeight: 500 }}>
             click here
             <svg width="22" height="12" viewBox="0 0 22 12" fill="none">
-              <path d="M1 6h17M13 1l6 5-6 5" stroke="#7C6FF7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M1 6h17M13 1l6 5-6 5" stroke="var(--accent-primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
           <div style={{
@@ -119,8 +124,8 @@ function SlideAiAnalysis() {
   return (
     <div>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <h2 style={H2}>Let AI analyze the job</h2>
-        <p style={SUB}>Claude reads the job description and gives you a match score, required skills, and tips.</p>
+        <h2 style={H2}>Get AI-powered insights</h2>
+        <p style={SUB}>Claude analyzes the job and matches it against your CV. Get a match score, required skills, and personalized tips.</p>
       </div>
 
       <div style={MOCK_CARD}>
@@ -132,13 +137,13 @@ function SlideAiAnalysis() {
         }}>
           <div style={{
             width: 46, height: 46, borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(34,197,94,0.1)', border: '2px solid #22C55E',
+            background: 'rgba(34,197,94,0.1)', border: '2px solid var(--success)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: '#22C55E' }}>88%</span>
+            <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', color: 'var(--success)' }}>88%</span>
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#22C55E', marginBottom: 2 }}>Strong Match</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)', marginBottom: 2 }}>Strong Match</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Your profile aligns well with this role</div>
           </div>
         </div>
@@ -177,63 +182,56 @@ function SlideAiAnalysis() {
   )
 }
 
-// ─── Slide 4 — Generate CV ────────────────────────────────────────────────────
-function SlideGenerateCv() {
+// ─── Slide 4 — Apply with your CV ────────────────────────────────────────────
+function SlideApply() {
   return (
     <div>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <h2 style={H2}>Generate a tailored CV</h2>
-        <p style={SUB}>One click creates a professionally formatted PDF, customised for this specific job.</p>
+        <h2 style={H2}>Apply your way</h2>
+        <p style={SUB}>Choose to apply with your existing CV or let AI generate a tailored version — optimized for this specific job.</p>
       </div>
 
-      {/* Mock CV — light background mimics real document */}
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid #d8d8e0',
-        borderRadius: 10,
-        padding: '18px 22px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-      }}>
-        {/* CV Header */}
-        <div style={{ borderBottom: '2px solid #7C6FF7', paddingBottom: 10, marginBottom: 14 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#0e0e1a', letterSpacing: '-0.01em', fontFamily: 'Georgia, serif' }}>
-            Alex Johnson
-          </div>
-          <div style={{ fontSize: 10, color: '#666', marginTop: 3, fontFamily: 'Inter, sans-serif' }}>
-            alex@email.com &nbsp;·&nbsp; linkedin.com/in/alexjohnson &nbsp;·&nbsp; github.com/alexj
-          </div>
+      <div style={MOCK_CARD}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 18 }}>
+          Ready to apply?
         </div>
 
-        {/* Experience */}
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 700, color: '#7C6FF7', textTransform: 'uppercase', letterSpacing: '0.13em', marginBottom: 8, fontFamily: 'Inter, sans-serif' }}>
-            Experience
-          </div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a1a', marginBottom: 1, fontFamily: 'Georgia, serif' }}>
-            Senior Backend Engineer — Acme Corp
-          </div>
-          <div style={{ fontSize: 10, color: '#888', marginBottom: 7, fontFamily: 'Inter, sans-serif' }}>
-            Jan 2022 – Present
-          </div>
-          <div style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
-            <span style={{ flexShrink: 0, color: '#555', fontSize: 11 }}>•</span>
-            <span style={{ fontSize: 11, color: '#333', lineHeight: 1.55, fontFamily: 'Inter, sans-serif' }}>
-              Led migration of core services to AWS Lambda, reducing infrastructure costs by 40% and improving API response times by 3×
-            </span>
-          </div>
-        </div>
-
-        {/* Download button */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+        {/* Option buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '7px 14px', borderRadius: 6, fontSize: 11, fontWeight: 500,
-            background: '#7C6FF7', color: '#fff', fontFamily: 'Inter, sans-serif',
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '14px 18px', borderRadius: 10,
+            background: 'var(--bg-base)',
+            border: '1px solid var(--border-default)',
+            cursor: 'default',
           }}>
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Download PDF
+            <span style={{ fontSize: 20 }}>📄</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                Apply with existing CV
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Use one of your saved CV versions
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '14px 18px', borderRadius: 10,
+            background: 'rgba(124,111,247,0.08)',
+            border: '1px solid rgba(124,111,247,0.35)',
+            cursor: 'default',
+          }}>
+            <span style={{ fontSize: 20 }}>✨</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-primary)', marginBottom: 2 }}>
+                Generate tailored CV
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                AI rewrites your CV to match this job
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -243,9 +241,9 @@ function SlideGenerateCv() {
 
 // ─── Slide 5 — Track Everything ───────────────────────────────────────────────
 const MOCK_ROWS = [
-  { company: 'Amazon', role: 'Backend Intern',   statusLabel: 'Applied',   statusColor: '#7C6FF7', statusBg: 'rgba(124,111,247,0.12)', statusBorder: 'rgba(124,111,247,0.3)',  score: 88, scoreColor: '#22C55E' },
-  { company: 'Google', role: 'SWE Intern',        statusLabel: 'Interview', statusColor: '#A78BFA', statusBg: 'rgba(167,139,250,0.12)', statusBorder: 'rgba(167,139,250,0.3)',  score: 82, scoreColor: '#22C55E' },
-  { company: 'Meta',   role: 'Full Stack',         statusLabel: 'OA',        statusColor: '#F59E0B', statusBg: 'rgba(245,158,11,0.12)',  statusBorder: 'rgba(245,158,11,0.3)',   score: 75, scoreColor: '#F59E0B' },
+  { company: 'Amazon', role: 'Backend Intern', statusLabel: 'Applied',   statusColor: 'var(--accent-primary)', statusBg: 'rgba(124,111,247,0.12)', statusBorder: 'rgba(124,111,247,0.3)', score: 88, scoreColor: 'var(--success)' },
+  { company: 'Google', role: 'SWE Intern',     statusLabel: 'Interview', statusColor: '#A78BFA',               statusBg: 'rgba(167,139,250,0.12)', statusBorder: 'rgba(167,139,250,0.3)', score: 82, scoreColor: 'var(--success)' },
+  { company: 'Meta',   role: 'Full Stack',      statusLabel: 'OA',        statusColor: 'var(--warning)',        statusBg: 'rgba(245,158,11,0.12)',  statusBorder: 'rgba(245,158,11,0.3)',  score: 75, scoreColor: 'var(--warning)' },
 ]
 
 function SlideTrack() {
@@ -253,26 +251,26 @@ function SlideTrack() {
     <div>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
         <h2 style={H2}>Track every application</h2>
-        <p style={SUB}>Update statuses, see your match scores, and never lose track of where you applied.</p>
+        <p style={SUB}>See your original and AI-tailored CVs, update statuses, and never lose track of where you applied.</p>
       </div>
 
       <div style={{ ...MOCK_CARD, padding: 0, overflow: 'hidden' }}>
         {/* Table header */}
         <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 90px 58px',
+          display: 'grid', gridTemplateColumns: '1fr 1fr 90px 48px 36px',
           padding: '10px 18px',
           borderBottom: '1px solid var(--border-subtle)',
           background: 'rgba(255,255,255,0.02)',
         }}>
-          {['Company', 'Role', 'Status', 'Match'].map(h => (
-            <div key={h} style={{ ...SECTION_LABEL, marginBottom: 0 }}>{h}</div>
+          {['Company', 'Role', 'Status', 'Match', ''].map((h, i) => (
+            <div key={i} style={{ ...SECTION_LABEL, marginBottom: 0 }}>{h}</div>
           ))}
         </div>
 
         {/* Rows */}
         {MOCK_ROWS.map((row, i) => (
           <div key={i} style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr 90px 58px',
+            display: 'grid', gridTemplateColumns: '1fr 1fr 90px 48px 36px',
             padding: '11px 18px',
             borderBottom: i < MOCK_ROWS.length - 1 ? '1px solid var(--border-subtle)' : 'none',
             alignItems: 'center',
@@ -295,6 +293,12 @@ function SlideTrack() {
             }}>
               {row.score}%
             </div>
+            {/* Download icon */}
+            <div style={{ display: 'flex', alignItems: 'center', opacity: 0.55 }}>
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--text-muted)" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </div>
           </div>
         ))}
       </div>
@@ -303,7 +307,7 @@ function SlideTrack() {
 }
 
 // ─── Slide registry ───────────────────────────────────────────────────────────
-const SLIDES = [SlideWelcome, SlideAddJob, SlideAiAnalysis, SlideGenerateCv, SlideTrack]
+const SLIDES = [SlideWelcome, SlideAddJob, SlideAiAnalysis, SlideApply, SlideTrack]
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
 export default function OnboardingModal({ onComplete }) {
@@ -339,7 +343,7 @@ export default function OnboardingModal({ onComplete }) {
         position: 'relative',
         width: '100%',
         maxWidth: 580,
-        maxHeight: '90vh',
+        maxHeight: 'calc(100vh - 56px)',
         overflowY: 'auto',
         background: 'var(--bg-surface)',
         border: '1px solid var(--border-default)',

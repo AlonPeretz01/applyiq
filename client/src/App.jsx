@@ -26,7 +26,7 @@ function PageSpinner() {
   )
 }
 
-const ONBOARDING_KEY = 'applyiq_onboarding_complete'
+const ONBOARDING_KEY = 'hiretrack_onboarding_complete'
 
 export default function App() {
   const { user } = useAuth()
