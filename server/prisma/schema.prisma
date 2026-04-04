@@ -140,6 +140,19 @@ model StatusHistory {
   @@map("status_history")
 }
 
+model UserCredits {
+  id                String   @id @default(cuid())
+  user_id           String   @unique
+  plan              String   @default("pilot") // pilot, pro, elite
+  ai_analyses_used  Int      @default(0)
+  cv_generated_used Int      @default(0)
+  reset_at          DateTime @default(now())
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@map("user_credits")
+}
+
 model UserProfile {
   id                String   @id @default(cuid())
   user_id           String   @unique

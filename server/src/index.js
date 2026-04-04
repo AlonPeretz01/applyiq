@@ -32,6 +32,7 @@ import aiRouter from './routes/ai.js'
 import cvGeneratorRouter from './routes/cvGenerator.js'
 import profileRouter from './routes/profile.js'
 import analyticsRouter from './routes/analytics.js'
+import creditsRouter from './routes/credits.js'
 import { errorHandler, notFound } from './middleware/errorHandler.js'
 import { startKeepAlive } from './lib/keepAlive.js'
 import { requireAuth } from './middleware/auth.js'
@@ -85,6 +86,7 @@ app.use('/api/ai',            requireAuth, aiLimiter, aiRouter)
 app.use('/api/cv-generator',  requireAuth, cvLimiter, cvGeneratorRouter)
 app.use('/api/profile',       requireAuth, profileRouter)
 app.use('/api/analytics',     requireAuth, analyticsRouter)
+app.use('/api/credits',       requireAuth, creditsRouter)
 
 // ─── Error handling ──────────────────────────────────────────────────────────
 app.use(notFound)

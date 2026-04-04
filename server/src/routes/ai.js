@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import prisma from '../lib/prisma.js'
 import { analyzeJob, recommendCvVersion } from '../services/aiService.js'
+import { checkCredits } from '../middleware/checkCredits.js'
 
 const router = Router()
 
 // POST /api/ai/analyze-job
-router.post('/analyze-job', async (req, res, next) => {
+router.post('/analyze-job', checkCredits('ai'), async (req, res, next) => {
   try {
     const { job_id } = req.body
     if (!job_id) return res.status(400).json({ data: null, error: 'job_id is required', message: 'job_id is required' })
@@ -42,7 +43,7 @@ router.post('/recommend-cv', async (req, res, next) => {
 })
 
 // POST /api/ai/full-analysis
-router.post('/full-analysis', async (req, res, next) => {
+router.post('/full-analysis', checkCredits('ai'), async (req, res, next) => {
   try {
     console.log('[full-analysis] STEP 1: request received, job_id =', req.body?.job_id)
     console.log('[full-analysis] ANTHROPIC_API_KEY present:', !!process.env.ANTHROPIC_API_KEY)

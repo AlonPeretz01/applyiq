@@ -27,9 +27,13 @@ api.interceptors.response.use(
   (error) => {
     const data = error.response?.data
     // Use the human-readable message from the server first, then the short error string
-    const message = data?.message || data?.error || error.message || 'Unknown error'
+    let message = data?.message || data?.error || error.message || 'Unknown error'
+    if (error.response?.status === 402) {
+      message = data?.message || 'Monthly limit reached. Resets on the 1st.'
+    }
     const enriched = new Error(message)
     enriched.status = error.response?.status
+    enriched.credits = data?.credits ?? null
     return Promise.reject(enriched)
   }
 )

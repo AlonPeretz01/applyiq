@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useCredits } from '../hooks/useCredits.js'
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 function IconDashboard() {
@@ -125,6 +126,68 @@ function Avatar({ name, email, size = 28 }) {
   )
 }
 
+const ADMIN_EMAILS = ['alonperetz2001@gmail.com']
+
+function CreditsBar({ used, limit }) {
+  const pct = limit >= 999999 ? 0 : Math.min(used / limit, 1)
+  const color = pct >= 0.8 ? 'var(--danger)' : pct >= 0.6 ? 'var(--warning)' : 'var(--success)'
+  return (
+    <div style={{ height: 4, borderRadius: 2, background: 'var(--border-default)', overflow: 'hidden' }}>
+      <div style={{ height: '100%', width: `${Math.round(pct * 100)}%`, background: color, borderRadius: 2, transition: 'width 0.3s ease' }} />
+    </div>
+  )
+}
+
+function CreditsCard({ email }) {
+  const { data: credits } = useCredits()
+  if (!credits || ADMIN_EMAILS.includes(email)) return null
+
+  const daysLeft = Math.ceil(
+    (new Date(new Date(credits.reset_at).getFullYear(), new Date(credits.reset_at).getMonth() + 1, 1) - new Date()) /
+    (1000 * 60 * 60 * 24)
+  )
+
+  return (
+    <div style={{
+      margin: '0 10px 8px',
+      padding: '10px 10px 8px',
+      borderRadius: 8,
+      background: 'var(--bg-elevated)',
+      border: '1px solid var(--border-subtle)',
+    }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 8 }}>
+        Monthly Credits
+      </div>
+
+      {/* AI Analyses */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>AI Analyses</span>
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+            {credits.ai_analyses_used}/{credits.ai_analyses_limit}
+          </span>
+        </div>
+        <CreditsBar used={credits.ai_analyses_used} limit={credits.ai_analyses_limit} />
+      </div>
+
+      {/* CV Generations */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>CV Generations</span>
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+            {credits.cv_generated_used}/{credits.cv_generated_limit}
+          </span>
+        </div>
+        <CreditsBar used={credits.cv_generated_used} limit={credits.cv_generated_limit} />
+      </div>
+
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'right', marginTop: 2 }}>
+        Resets in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+      </div>
+    </div>
+  )
+}
+
 // ─── Sidebar (memoised — only re-renders when user/displayName/signOut change) ─
 const Sidebar = memo(function Sidebar({ user, displayName, onSignOut, onNavigate }) {
   return (
@@ -178,6 +241,9 @@ const Sidebar = memo(function Sidebar({ user, displayName, onSignOut, onNavigate
           <NavItem key={to} to={to} label={label} Icon={Icon} />
         ))}
       </nav>
+
+      {/* Credits card */}
+      <CreditsCard email={user?.email} />
 
       {/* User section */}
       <div style={{

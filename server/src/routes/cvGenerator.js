@@ -2,10 +2,11 @@ import { Router } from 'express'
 import prisma from '../lib/prisma.js'
 import { supabaseAdmin } from '../lib/supabase.js'
 import { generateTailoredCv, renderCvHtml, generatePdf } from '../services/cvGeneratorService.js'
+import { checkCredits } from '../middleware/checkCredits.js'
 
 const router = Router()
 
-router.post('/generate', async (req, res, next) => {
+router.post('/generate', checkCredits('cv'), async (req, res, next) => {
   try {
     const { job_id, cv_version_id } = req.body
     if (!job_id || !cv_version_id) {
