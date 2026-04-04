@@ -29,8 +29,8 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
         aria-modal="true"
         style={{
           position: 'fixed',
-          top: 56, left: 0, right: 0, bottom: 0,
-          height: 'calc(100vh - 56px)',
+          top: 56, left: 0, right: 0,
+          height: 'calc(100vh - 56px - 60px)',
           zIndex: 50,
           display: 'flex',
           flexDirection: 'column',
@@ -73,7 +73,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
         </div>
 
         {/* Body */}
-        <div style={{ padding: '20px 20px 40px', flex: 1 }}>{children}</div>
+        <div style={{ padding: '20px 20px 80px', flex: 1 }}>{children}</div>
       </div>
     )
   }
