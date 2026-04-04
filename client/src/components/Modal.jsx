@@ -29,13 +29,13 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
         aria-modal="true"
         style={{
           position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
+          top: 56, left: 0, right: 0, bottom: 0,
+          height: 'calc(100vh - 56px)',
           zIndex: 50,
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--bg-surface)',
           overflowY: 'auto',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
         }}
       >
         {/* Sticky header — always visible at top */}
