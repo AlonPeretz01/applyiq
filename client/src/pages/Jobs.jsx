@@ -677,6 +677,7 @@ export default function Jobs() {
 
   // Map of jobId → saved AiAnalysis row (or null).
   const [savedAnalysesMap, setSavedAnalysesMap] = useState({})
+  const [analysesLoading, setAnalysesLoading]   = useState(true)
 
   const [confirmState, setConfirm] = useState({ open: false, target: null })
 
@@ -686,19 +687,27 @@ export default function Jobs() {
   const [cvPreviewMatchScore, setCvPreviewMatchScore]   = useState(null)
 
   // On page load, fetch saved analyses for all jobs (cheap DB calls, no AI).
+  // Use Promise.all so analysesLoading flips only once — prevents button flash.
   useEffect(() => {
     console.log('[useEffect] jobs length:', jobs?.length)
-    if (!jobs || jobs.length === 0) return
-    jobs.forEach(async (job) => {
-      try {
-        const saved = await getSavedAnalysis(job.id)
-        console.log(`[savedAnalysesMap] job=${job.id} (${job.company_name}) → saved value:`, saved)
-        console.log(`[savedAnalysesMap] hasSaved will be:`, !!saved)
-        setSavedAnalysesMap((prev) => ({ ...prev, [job.id]: saved }))
-      } catch (err) {
-        console.warn(`[savedAnalysesMap] job=${job.id} fetch failed:`, err.message)
-        setSavedAnalysesMap((prev) => ({ ...prev, [job.id]: null }))
-      }
+    if (!jobs || jobs.length === 0) { setAnalysesLoading(false); return }
+    setAnalysesLoading(true)
+    Promise.all(
+      jobs.map(async (job) => {
+        try {
+          const saved = await getSavedAnalysis(job.id)
+          console.log(`[savedAnalysesMap] job=${job.id} (${job.company_name}) → hasSaved:`, !!saved)
+          return { id: job.id, saved }
+        } catch (err) {
+          console.warn(`[savedAnalysesMap] job=${job.id} fetch failed:`, err.message)
+          return { id: job.id, saved: null }
+        }
+      })
+    ).then((results) => {
+      const map = {}
+      results.forEach(({ id, saved }) => { map[id] = saved })
+      setSavedAnalysesMap(map)
+      setAnalysesLoading(false)
     })
   }, [jobs])
 
@@ -816,7 +825,7 @@ export default function Jobs() {
     }
   }
 
-  // Forces a new AI call — from table row or modal.
+  // Forces a new AI call — from table row or modal re-analyze button.
   async function handleReanalyze(job) {
     const targetJob = job ?? analysisJob
     if (!targetJob) return
@@ -826,8 +835,10 @@ export default function Jobs() {
       const saved = await getSavedAnalysis(targetJob.id)
       console.log('[handleReanalyze] getSavedAnalysis returned:', saved)
       setSavedAnalysesMap((prev) => ({ ...prev, [targetJob.id]: saved }))
+      setAnalysisJob(targetJob)
       setAnalysisSavedAt(saved?.created_at ?? null)
       setAnalysisResult(data)
+      setAnalysisModalOpen(true)
     } catch (err) {
       toast.error(err.message || 'Re-analysis failed.')
     } finally {
@@ -873,8 +884,8 @@ export default function Jobs() {
         ) : jobs.length === 0 ? (
           <EmptyState onAdd={openAdd} />
         ) : jobs.map((job) => {
-          const hasSaved    = !!savedAnalysesMap[job.id]
-          const isAnalyzing = analyzingId === job.id
+          const hasSaved      = !!savedAnalysesMap[job.id]
+          const isAnalyzing   = analyzingId   === job.id
           const isReanalyzing = reanalyzingId === job.id
           return (
             <div key={job.id} style={{
@@ -888,8 +899,10 @@ export default function Jobs() {
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
                 {job.title}
               </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {hasSaved ? (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                {analysesLoading ? (
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid var(--border-default)', borderTopColor: 'var(--text-muted)', animation: 'spinRing 0.75s linear infinite', flexShrink: 0 }} />
+                ) : hasSaved ? (
                   <>
                     <button
                       onClick={() => handleViewSaved(job)}
@@ -1054,7 +1067,9 @@ export default function Jobs() {
                     <td style={{ padding: '13px 16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
 
-                        {hasSaved ? (
+                        {analysesLoading ? (
+                          <div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid var(--border-default)', borderTopColor: 'var(--text-muted)', animation: 'spinRing 0.75s linear infinite', flexShrink: 0 }} />
+                        ) : hasSaved ? (
                           <>
                             {/* View Analysis */}
                             <button
