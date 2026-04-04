@@ -3,7 +3,10 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { useApplications } from '../hooks/useApplications.js'
 import { useCvVersions } from '../hooks/useCvVersions.js'
+import { useCredits } from '../hooks/useCredits.js'
 import api from '../api/client.js'
+
+const ADMIN_EMAILS = ['alonperetz2001@gmail.com']
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const AVATAR_PALETTES = [
@@ -302,6 +305,81 @@ function SkillsInput({ skills, onChange }) {
   )
 }
 
+// ─── Credits section ──────────────────────────────────────────────────────────
+function CreditsBar({ used, limit }) {
+  const pct   = limit >= 999999 ? 0 : Math.min(used / limit, 1)
+  const color = pct >= 0.8 ? 'var(--danger)' : pct >= 0.6 ? 'var(--warning)' : 'var(--success)'
+  return (
+    <div style={{ height: 5, borderRadius: 3, background: 'var(--border-default)', overflow: 'hidden' }}>
+      <div style={{ height: '100%', width: `${Math.round(pct * 100)}%`, background: color, borderRadius: 3, transition: 'width 0.3s ease' }} />
+    </div>
+  )
+}
+
+function CreditsSection({ email }) {
+  const { data: credits } = useCredits()
+  const isAdmin = ADMIN_EMAILS.includes(email)
+
+  const daysLeft = credits
+    ? Math.ceil(
+        (new Date(new Date(credits.reset_at).getFullYear(), new Date(credits.reset_at).getMonth() + 1, 1) - new Date()) /
+        (1000 * 60 * 60 * 24)
+      )
+    : null
+
+  return (
+    <div style={SECTION_CARD}>
+      <SectionHeader title="Your Credits" />
+
+      {/* AI Analyses */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>AI Analyses</span>
+          <span style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-primary)' }}>
+            {isAdmin ? (
+              <span style={{ color: 'var(--success)', fontFamily: 'inherit' }}>Unlimited</span>
+            ) : credits ? (
+              `${credits.ai_analyses_used} / ${credits.ai_analyses_limit} used`
+            ) : '—'}
+          </span>
+        </div>
+        {!isAdmin && credits && (
+          <CreditsBar used={credits.ai_analyses_used} limit={credits.ai_analyses_limit} />
+        )}
+      </div>
+
+      {/* CV Generations */}
+      <div style={{ marginBottom: daysLeft != null || isAdmin ? 12 : 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>CV Generations</span>
+          <span style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-primary)' }}>
+            {isAdmin ? (
+              <span style={{ color: 'var(--success)', fontFamily: 'inherit' }}>Unlimited</span>
+            ) : credits ? (
+              `${credits.cv_generated_used} / ${credits.cv_generated_limit} used`
+            ) : '—'}
+          </span>
+        </div>
+        {!isAdmin && credits && (
+          <CreditsBar used={credits.cv_generated_used} limit={credits.cv_generated_limit} />
+        )}
+      </div>
+
+      {/* Reset countdown */}
+      {!isAdmin && daysLeft != null && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+          Resets in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+        </div>
+      )}
+
+      {/* Loading skeleton */}
+      {!isAdmin && !credits && (
+        <div style={{ height: 4, borderRadius: 2, background: 'var(--border-subtle)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      )}
+    </div>
+  )
+}
+
 // ─── Left column components ───────────────────────────────────────────────────
 function AvatarCard({ user, profile }) {
   const displayName = profile.full_name
@@ -493,6 +571,7 @@ export default function Profile() {
           <div className="profile-layout-left">
             <AvatarCard user={user} profile={form} />
             <StatsCard totalApps={totalApps} interviews={interviews} totalCvs={totalCvs} />
+            <CreditsSection email={user?.email} />
 
             {/* Account — read-only email */}
             <div style={SECTION_CARD}>
