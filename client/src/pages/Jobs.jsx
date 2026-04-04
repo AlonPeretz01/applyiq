@@ -242,21 +242,13 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, applications,
     }
   }
 
-  async function handleGenerateTailored() {
+  function handleGenerateTailored() {
     if (!recommendation?.recommended_cv_id) return
-    setApplyMode('tailored')
-    try {
-      const app = await createApp.mutateAsync({
-        job_id: job.id,
-        cv_version_id: recommendation.recommended_cv_id,
-        match_score: recommendation.match_score != null ? Math.round(recommendation.match_score) : null,
-        notes: null,
-      })
-      onApplyWithCv({ cvVersionId: recommendation.recommended_cv_id, appId: app.data.id })
-    } catch (err) {
-      toast.error(err.message || 'Failed to create application')
-      setApplyMode(null)
-    }
+    onApplyWithCv({
+      cvVersionId: recommendation.recommended_cv_id,
+      appId: null,
+      matchScore: recommendation.match_score ?? null,
+    })
   }
 
   return (
@@ -602,7 +594,7 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, applications,
                     width: '100%', textAlign: 'left', padding: '14px 16px',
                     background: 'transparent', border: 'none',
                     cursor: applyMode ? 'not-allowed' : 'pointer',
-                    opacity: applyMode && applyMode !== 'tailored' ? 0.45 : 1,
+                    opacity: applyMode ? 0.45 : 1,
                     transition: 'background 0.15s',
                     display: 'flex', alignItems: 'center', gap: 14,
                   }}
@@ -610,15 +602,13 @@ function AnalysisModal({ isOpen, onClose, job, result, cvVersions, applications,
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                 >
                   <div style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-glow)', border: '1px solid rgba(124,111,247,0.3)' }}>
-                    {applyMode === 'tailored' ? <Spinner size={14} /> : (
-                      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="var(--accent-primary)" strokeWidth={1.75}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                      </svg>
-                    )}
+                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="var(--accent-primary)" strokeWidth={1.75}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
                   </div>
                   <div>
                     <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                      {applyMode === 'tailored' ? 'Creating application…' : 'Generate tailored CV'}
+                      Generate tailored CV
                     </p>
                     <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>Let AI customize it for this job</p>
                   </div>
@@ -692,6 +682,7 @@ export default function Jobs() {
   const [cvPreviewOpen, setCvPreviewOpen]               = useState(false)
   const [cvPreviewCvVersionId, setCvPreviewCvVersionId] = useState(null)
   const [cvPreviewAppId, setCvPreviewAppId]             = useState(null)
+  const [cvPreviewMatchScore, setCvPreviewMatchScore]   = useState(null)
 
   // On page load, fetch saved analyses for all jobs (cheap DB calls, no AI).
   useEffect(() => {
@@ -743,10 +734,11 @@ export default function Jobs() {
     }
   }
 
-  function handleApplyWithCv({ cvVersionId, appId }) {
+  function handleApplyWithCv({ cvVersionId, appId, matchScore }) {
     setAnalysisModalOpen(false)
     setCvPreviewCvVersionId(cvVersionId)
     setCvPreviewAppId(appId ?? null)
+    setCvPreviewMatchScore(matchScore ?? null)
     setCvPreviewOpen(true)
   }
 
@@ -1220,6 +1212,7 @@ export default function Jobs() {
         companyName={analysisJob?.company_name}
         applicationId={cvPreviewAppId}
         jobUrl={analysisJob?.url}
+        matchScore={cvPreviewMatchScore}
       />
 
       {/* Confirm Delete */}

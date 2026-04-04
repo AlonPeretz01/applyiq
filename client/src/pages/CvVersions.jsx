@@ -2,13 +2,27 @@ import { useState, useRef } from 'react'
 import { useCvVersions, useCreateCvVersion, useUpdateCvVersion, useDeleteCvVersion } from '../hooks/useCvVersions.js'
 import Modal, { ConfirmModal } from '../components/Modal.jsx'
 
-const TARGET_TYPES = ['FULLSTACK', 'BACKEND', 'DATA', 'STUDENT']
+const TARGET_TYPES = [
+  'FULLSTACK', 'BACKEND', 'FRONTEND', 'DATA', 'DATA_SCIENCE',
+  'DEVOPS', 'MOBILE', 'ML', 'QA', 'HELPDESK',
+  'CYBERSECURITY', 'PRODUCT', 'EMBEDDED', 'STUDENT',
+]
 
 const TARGET_TYPE_META = {
-  FULLSTACK: { label: 'Fullstack', strip: 'linear-gradient(90deg,#7C6FF7,#A78BFA)', color: 'var(--accent-primary)',  bg: 'var(--accent-glow)',    border: 'rgba(124,111,247,0.3)' },
-  BACKEND:   { label: 'Backend',   strip: 'linear-gradient(90deg,#60A5FA,#34D399)', color: 'var(--info)',            bg: 'var(--info-bg)',         border: 'rgba(96,165,250,0.3)'  },
-  DATA:      { label: 'Data',      strip: 'linear-gradient(90deg,#F59E0B,#F97316)', color: 'var(--warning)',         bg: 'var(--warning-bg)',      border: 'rgba(245,158,11,0.3)'  },
-  STUDENT:   { label: 'Student',   strip: 'linear-gradient(90deg,#22C55E,#34D399)', color: 'var(--success)',         bg: 'var(--success-bg)',      border: 'rgba(34,197,94,0.3)'   },
+  FULLSTACK:     { label: 'Fullstack',     strip: 'linear-gradient(90deg,#7C6FF7,#A78BFA)', color: 'var(--accent-primary)', bg: 'var(--accent-glow)',            border: 'rgba(124,111,247,0.3)' },
+  BACKEND:       { label: 'Backend',       strip: 'linear-gradient(90deg,#60A5FA,#34D399)', color: 'var(--info)',           bg: 'var(--info-bg)',                 border: 'rgba(96,165,250,0.3)'  },
+  FRONTEND:      { label: 'Frontend',      strip: 'linear-gradient(90deg,#EC4899,#F97316)', color: '#EC4899',               bg: 'rgba(236,72,153,0.1)',           border: 'rgba(236,72,153,0.3)'  },
+  DATA:          { label: 'Data',          strip: 'linear-gradient(90deg,#F59E0B,#F97316)', color: 'var(--warning)',        bg: 'var(--warning-bg)',              border: 'rgba(245,158,11,0.3)'  },
+  DATA_SCIENCE:  { label: 'Data Science',  strip: 'linear-gradient(90deg,#F97316,#EF4444)', color: '#F97316',               bg: 'rgba(249,115,22,0.1)',           border: 'rgba(249,115,22,0.3)'  },
+  DEVOPS:        { label: 'DevOps',        strip: 'linear-gradient(90deg,#34D399,#60A5FA)', color: '#34D399',               bg: 'rgba(52,211,153,0.1)',           border: 'rgba(52,211,153,0.3)'  },
+  MOBILE:        { label: 'Mobile',        strip: 'linear-gradient(90deg,#A78BFA,#EC4899)', color: '#A78BFA',               bg: 'rgba(167,139,250,0.1)',          border: 'rgba(167,139,250,0.3)' },
+  ML:            { label: 'ML / AI',       strip: 'linear-gradient(90deg,#06B6D4,#7C6FF7)', color: '#06B6D4',               bg: 'rgba(6,182,212,0.1)',            border: 'rgba(6,182,212,0.3)'   },
+  QA:            { label: 'QA',            strip: 'linear-gradient(90deg,#84CC16,#22C55E)', color: '#84CC16',               bg: 'rgba(132,204,22,0.1)',           border: 'rgba(132,204,22,0.3)'  },
+  HELPDESK:      { label: 'Helpdesk',      strip: 'linear-gradient(90deg,#6B7280,#9CA3AF)', color: '#9CA3AF',               bg: 'rgba(156,163,175,0.1)',          border: 'rgba(156,163,175,0.3)' },
+  CYBERSECURITY: { label: 'Cybersecurity', strip: 'linear-gradient(90deg,#EF4444,#F97316)', color: 'var(--danger)',         bg: 'rgba(239,68,68,0.1)',            border: 'rgba(239,68,68,0.3)'   },
+  PRODUCT:       { label: 'Product',       strip: 'linear-gradient(90deg,#F59E0B,#A78BFA)', color: '#F59E0B',               bg: 'rgba(245,158,11,0.1)',           border: 'rgba(245,158,11,0.3)'  },
+  EMBEDDED:      { label: 'Embedded',      strip: 'linear-gradient(90deg,#64748B,#34D399)', color: '#64748B',               bg: 'rgba(100,116,139,0.1)',          border: 'rgba(100,116,139,0.3)' },
+  STUDENT:       { label: 'Student',       strip: 'linear-gradient(90deg,#22C55E,#34D399)', color: 'var(--success)',        bg: 'var(--success-bg)',              border: 'rgba(34,197,94,0.3)'   },
 }
 
 const EMPTY_FORM = { name: '', target_type: '', plain_text: '' }

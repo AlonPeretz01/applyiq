@@ -9,13 +9,18 @@ import Modal from './Modal.jsx'
 // preview  → iframe + Download / Close buttons
 // error    → error message + retry
 
-export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jobTitle, companyName, applicationId, jobUrl }) {
+// matchScore, jobId, cvVersionId are used to create the application after download.
+// If applicationId is passed directly, we skip auto-creation (legacy path).
+export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jobTitle, companyName, applicationId: externalApplicationId, jobUrl, matchScore }) {
   const [phase, setPhase]         = useState('idle')
   const [html, setHtml]           = useState(null)
   const [errorMsg, setErrorMsg]   = useState(null)
   const [downloading, setDownloading] = useState(false)
   const [markingApplied, setMarkingApplied] = useState(false)
   const [markedApplied, setMarkedApplied]   = useState(false)
+  // Internal applicationId — set after PDF is downloaded when no externalApplicationId was given
+  const [createdAppId, setCreatedAppId] = useState(null)
+  const applicationId = externalApplicationId ?? createdAppId
 
   // Reset state when modal opens fresh
   function handleClose() {
@@ -23,6 +28,7 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
     setHtml(null)
     setErrorMsg(null)
     setMarkedApplied(false)
+    setCreatedAppId(null)
     onClose()
   }
 
@@ -53,6 +59,25 @@ export default function CvPreviewModal({ isOpen, onClose, jobId, cvVersionId, jo
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+
+      // If no applicationId was passed in, create the application now that the PDF was downloaded
+      if (!externalApplicationId && !createdAppId && jobId && cvVersionId) {
+        try {
+          const res = await applicationsApi.create({
+            job_id: jobId,
+            cv_version_id: cvVersionId,
+            match_score: matchScore != null ? Math.round(matchScore) : null,
+            notes: null,
+          })
+          const newAppId = res.data?.id
+          if (newAppId) {
+            await applicationsApi.updateStatus(newAppId, 'READY', null)
+            setCreatedAppId(newAppId)
+          }
+        } catch {
+          // Non-fatal — application creation failed, but PDF was downloaded
+        }
+      }
     } catch (err) {
       setErrorMsg(err.message || 'Failed to download PDF')
     } finally {

@@ -25,7 +25,7 @@ export async function analyzeJob(jobDescription) {
 - required_skills: string[] (technical and soft skills explicitly required)
 - technologies: string[] (specific tools, frameworks, languages, platforms)
 - experience_years: number | null (minimum years required, null if not specified)
-- job_type: string ("full-time" | "part-time" | "contract" | "internship" | "unknown")
+- job_type: string ("full-time" | "part-time" | "contract" | "internship" | "fullstack" | "backend" | "frontend" | "devops" | "mobile" | "data" | "data-science" | "ml" | "qa" | "cybersecurity" | "embedded" | "product" | "helpdesk" | "unknown")
 - seniority: string ("junior" | "mid" | "senior" | "lead" | "staff" | "principal" | "unknown")
 - keywords: string[] (top 8–12 important terms for ATS optimization)
 - summary: string (2–3 sentence plain-English summary of the role)

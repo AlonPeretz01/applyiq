@@ -39,15 +39,16 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
         className={`anim-slide-up relative z-10 w-full${isMobile ? '' : ' mx-4'}`}
         style={{
           maxWidth: isMobile ? '100%' : maxWidth,
-          maxHeight: isMobile ? '100%' : '90vh',
-          height: isMobile ? '100%' : undefined,
+          maxHeight: isMobile ? '100vh' : '90vh',
+          height: isMobile ? '100vh' : undefined,
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--bg-surface)',
-          border: '1px solid var(--border-default)',
+          border: isMobile ? 'none' : '1px solid var(--border-default)',
           borderRadius: isMobile ? 0 : 16,
           boxShadow: '0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,111,247,0.06)',
           overflow: 'hidden',
+          paddingTop: isMobile ? 20 : 0,
         }}
       >
         {/* Header */}

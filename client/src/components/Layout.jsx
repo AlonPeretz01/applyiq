@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useRef, useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useCredits } from '../hooks/useCredits.js'
@@ -298,11 +298,24 @@ const Sidebar = memo(function Sidebar({ user, displayName, onSignOut, onNavigate
 export default function Layout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
+  const avatarMenuRef = useRef(null)
 
   async function handleSignOut() {
     await signOut()
     navigate('/login', { replace: true })
   }
+
+  useEffect(() => {
+    if (!avatarMenuOpen) return
+    function handleOutsideClick(e) {
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
+        setAvatarMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [avatarMenuOpen])
 
   const displayName = user?.user_metadata?.full_name
     || user?.user_metadata?.name
@@ -342,7 +355,62 @@ export default function Layout() {
             HireTrack
           </span>
         </div>
-        <Avatar name={user?.user_metadata?.full_name || user?.user_metadata?.name} email={user?.email} size={32} />
+        <div ref={avatarMenuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setAvatarMenuOpen(o => !o)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+          >
+            <Avatar name={user?.user_metadata?.full_name || user?.user_metadata?.name} email={user?.email} size={32} />
+          </button>
+
+          {avatarMenuOpen && (
+            <div style={{
+              position: 'absolute', top: 40, right: 0, zIndex: 9999,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 10,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              minWidth: 160,
+              overflow: 'hidden',
+            }}>
+              <button
+                onClick={() => { setAvatarMenuOpen(false); navigate('/profile') }}
+                style={{
+                  width: '100%', padding: '11px 16px', textAlign: 'left',
+                  background: 'transparent', border: 'none',
+                  fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-surface)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+                Profile
+              </button>
+              <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+              <button
+                onClick={() => { setAvatarMenuOpen(false); handleSignOut() }}
+                style={{
+                  width: '100%', padding: '11px 16px', textAlign: 'left',
+                  background: 'transparent', border: 'none',
+                  fontSize: 13, color: 'var(--danger)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                </svg>
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* ── Mobile Bottom Nav ── */}

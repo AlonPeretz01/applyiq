@@ -16,7 +16,17 @@ datasource db {
 enum TargetType {
   FULLSTACK
   BACKEND
+  FRONTEND
   DATA
+  DATA_SCIENCE
+  DEVOPS
+  MOBILE
+  ML
+  QA
+  HELPDESK
+  CYBERSECURITY
+  PRODUCT
+  EMBEDDED
   STUDENT
 }
 
